@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, status, empty, avatar %}
+{% block title %}Traveler dashboard{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-plane"></i> Traveler workspace</span>
+        <h1>Hi {{ current_user.name.split()[0] }}, ready to carry?</h1>
+        <p>{{ active|length }} active cart{{ '' if active|length == 1 else 's' }} · {{ escrow_total|money }} protected on your trips.</p>
+    </div>
+    <div class="page-head-actions">
+        <button class="btn btn-outline" type="button" data-open-modal="tripModal"><i class="fas fa-plus"></i> Add a trip</button>
+        <a class="btn btn-primary" href="{{ url_for('main.requests_page') }}"><i class="fas fa-bell"></i> Find requests</a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon earnings"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="stat-content"><h3>{{ earnings|money }}</h3><p>Total earnings</p>
+            <div class="stat-change positive"><i class="fas fa-wallet"></i> delivery fees</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orders"><i class="fas fa-box"></i></div>
+        <div class="stat-content"><h3>{{ active|length }}</h3><p>Active carts</p>
+            <div class="stat-change positive"><i class="fas fa-plane"></i> being carried</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon escrow"><i class="fas fa-shield-halved"></i></div>
+        <div class="stat-content"><h3>{{ escrow_total|money }}</h3><p>Escrow value</p>
+            <div class="stat-change positive"><i class="fas fa-lock"></i> held safely</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon rating"><i class="fas fa-star"></i></div>
+        <div class="stat-content"><h3>{{ deliveries }}</h3><p>Deliveries completed</p>
+            <div class="stat-change positive"><i class="fas fa-star"></i> {{ '%.1f'|format(current_user.rating or 0) }} rating</div></div>
+    </div>
+</div>
+
+{% if active_trip %}
+<section class="active-trip-section">
+    <div class="trip-header">
+        <h2><i class="fas fa-plane-departure"></i> {{ active_trip.from_city }} → {{ active_trip.to_city }}</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="trip-route"><i class="fas fa-route"></i> {{ active_trip.from_city }} → {{ active_trip.to_city }}</span>
+            <span class="trip-date"><i class="fas fa-calendar"></i> {{ active_trip.departure_date|day }}</span>
+        </div>
+    </div>
+    <div class="trip-stats">
+        <div class="trip-stat"><strong>{{ active|length }}</strong><span>Carts on this trip</span></div>
+        <div class="trip-stat"><strong>{{ '%.1f'|format(active_trip.used_kg) }} kg</strong><span>Capacity used</span></div>
+        <div class="trip-stat"><strong>{{ '%.1f'|format(active_trip.capacity_kg - active_trip.used_kg) }} kg</strong><span>Remaining capacity</span></div>
+        <div class="trip-stat"><strong>{{ active_trip.fee|money }}</strong><span>Fee per cart</span></div>
+    </div>
+    <div class="capacity-display">
+        <div class="capacity-text"><span>Capacity</span><strong>{{ '%.1f'|format(active_trip.used_kg) }} / {{ active_trip.capacity_kg }} kg</strong></div>
+        <div class="capacity-bar"><div class="capacity-fill" style="width: {{ (active_trip.used_kg / active_trip.capacity_kg * 100)|round(1) }}%"></div></div>
+    </div>
+</section>
+{% endif %}
+
+<div class="dashboard-grid">
+    <div class="main-content">
+        <div class="tabs" role="tablist">
+            <a class="tab {% if tab == 'carts' %}active{% endif %}" href="{{ url_for('main.traveler_dashboard', tab='carts') }}">Active carts ({{ active|length }})</a>
+            <a class="tab {% if tab == 'requests' %}active{% endif %}" href="{{ url_for('main.traveler_dashboard', tab='requests') }}">Requests ({{ requests|length }})</a>
+            <a class="tab {% if tab == 'verification' %}active{% endif %}" href="{{ url_for('main.traveler_dashboard', tab='verification') }}">Verification ({{ pending_trips|length }})</a>
+        </div>
+
+        {% if tab == 'carts' %}
+        <div class="tab-content active">
+            <h2><i class="fas fa-box"></i> Carts you are carrying</h2>
+            <p>Upload receipts, keep buyers updated and hand over with the delivery code.</p>
+
+            {% for cart in active %}
+            <article class="cart-card">
+                <div class="cart-header">
+                    <div class="cart-title"><i class="fas fa-store"></i> {{ cart.store_name }} · #{{ cart.id }}</div>
+                    {{ status(cart.status) }}
+                </div>
+                <div class="cart-info">
+                    <div class="info-item"><i class="fas fa-user"></i> {{ cart.buyer_name }}</div>
+                    <div class="info-item"><i class="fas fa-location-dot"></i> {{ cart.delivery_city }}</div>
+                    <div class="info-item"><i class="fas fa-calendar"></i> Deliver by {{ cart.delivery_date|day }}</div>
+                    <div class="info-item"><i class="fas fa-weight-hanging"></i> {{ '%.1f'|format(cart.weight) }} kg</div>
+                    <div class="info-item"><i class="fas fa-money-bill"></i> {{ cart.total|money }} items</div>
+                    <div class="info-item"><i class="fas fa-hand-holding-dollar"></i> {{ cart.traveler_fee|money }} fee</div>
+                </div>
+
+                <div class="cart-items">
+                    {% for item in cart.line_items %}
+                    <div class="item-row">
+                        <span class="item-name">{{ item.name }}</span>
+                        <span class="item-details"><span>×{{ item.quantity }}</span><span class="item-price">{{ (item.quantity * item.unit_price)|money }}</span></span>
+                    </div>
+                    {% endfor %}
+                    {% if cart.receipt_amount %}
+                    <div class="item-row">
+                        <span class="item-name"><i class="fas fa-receipt"></i> Receipt · {{ cart.receipt_store }}</span>
+                        <span class="item-details"><span>{{ cart.receipt_date|day }}</span><span class="item-price">{{ cart.receipt_amount|money }}</span></span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if cart.status == 'assigned' and not cart.paid %}
+                <div class="notice warning" style="margin:12px 0">
+                    <i class="fas fa-clock"></i>
+                    <div>Waiting for the buyer to pay into escrow. Do not buy the items yet.</div>
+                </div>
+                {% elif cart.status == 'assigned' and cart.paid %}
+                <div class="notice" style="margin:12px 0">
+                    <i class="fas fa-hourglass-half"></i>
+                    <div>
+                        Escrow funded. Upload the receipt by <strong>{{ cart.receipt_due_at[:10]|day if cart.receipt_due_at else '—' }}</strong> or the buyer is refunded automatically.
+                        {% if cart.receipt_status == 'pending' %}<br><strong>Receipt submitted — waiting for admin verification.</strong>{% endif %}
+                        {% if cart.receipt_status == 'rejected' %}<br><strong>Receipt rejected:</strong> {{ cart.receipt_note }}. Upload a new one before the deadline.{% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% set step_index = {'assigned': 0, 'purchased': 1, 'in_transit': 2, 'delivered': 3}.get(cart.status, 0) %}
+                <div class="cart-progress">
+                    <div class="progress-steps">
+                        {% for label in ['Purchased', 'In transit', 'Delivered'] %}
+                        <div class="step {% if loop.index < step_index %}done{% elif loop.index == step_index %}active{% endif %}">
+                            <div class="step-icon">{% if loop.index < step_index %}<i class="fas fa-check"></i>{% else %}{{ loop.index }}{% endif %}</div>
+                            <div class="step-text">{{ label }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="cart-actions">
+                    {% if cart.status == 'assigned' and not cart.paid %}
+                    <span class="badge badge-pending"><i class="fas fa-lock"></i> Waiting for escrow payment</span>
+                    {% elif cart.status == 'assigned' and cart.paid and cart.receipt_status == 'none' %}
+                    <button class="btn btn-primary" type="button" data-open-modal="receiptModal"
+                            data-receipt-cart="{{ cart.id }}" data-receipt-store="{{ cart.store_name }}" data-receipt-buyer="{{ cart.buyer_name }}">
+                        <i class="fas fa-receipt"></i> Upload receipt
+                    </button>
+                    {% elif cart.status == 'assigned' and cart.paid and cart.receipt_status == 'rejected' %}
+                    <button class="btn btn-primary" type="button" data-open-modal="receiptModal"
+                            data-receipt-cart="{{ cart.id }}" data-receipt-store="{{ cart.store_name }}" data-receipt-buyer="{{ cart.buyer_name }}">
+                        <i class="fas fa-upload"></i> Re-upload receipt
+                    </button>
+                    {% elif cart.status == 'assigned' and cart.paid %}
+                    <span class="badge badge-pending"><i class="fas fa-clock"></i> Awaiting admin verification</span>
+                    {% endif %}
+                    {% if cart.status in ('purchased', 'in_transit') %}
+                    <form method="post" action="{{ url_for('main.cart_deliver', cart_id=cart.id) }}" class="inline-form">
+                        {{ csrf_field() }}
+                        <button class="btn btn-success" type="submit"><i class="fas fa-hand-holding-box"></i> Mark delivered</button>
+                    </form>
+                    {% endif %}
+                    {% if cart.status == 'purchased' %}
+                    <form method="post" action="{{ url_for('main.cart_ship', cart_id=cart.id) }}" class="inline-form">
+                        {{ csrf_field() }}
+                        <button class="btn btn-outline" type="submit"><i class="fas fa-plane"></i> Mark in transit</button>
+                    </form>
+                    {% endif %}
+                    {% if cart.status == 'delivered' %}
+                    <span class="badge badge-verified"><i class="fas fa-lock"></i> Waiting for buyer release</span>
+                    {% endif %}
+                    <a class="btn btn-outline" href="{{ url_for('main.cart_detail', cart_id=cart.id) }}"><i class="fas fa-eye"></i> Details</a>
+                    <a class="btn btn-ghost" href="{{ url_for('main.messages', **{'with': cart.buyer_id}) }}"><i class="fas fa-comment"></i> Message buyer</a>
+                </div>
+            </article>
+            {% else %}
+            {{ empty('fa-box-open', 'No carts yet', 'Accept a request and your active deliveries will show up here.') }}
+            {% endfor %}
+        </div>
+
+        {% elif tab == 'requests' %}
+        <div class="tab-content active">
+            <h2><i class="fas fa-bell"></i> Requests waiting for a traveler</h2>
+            <p>Our matching algorithm ranks requests against your verified trips.</p>
+
+            {% for cart in requests %}
+            <article class="request-card">
+                <div class="request-header">
+                    <div class="request-title">{{ cart.store_name }} · {{ cart.buyer_name }}</div>
+                    <span class="request-time"><i class="fas fa-clock"></i> {{ cart.created_at|when }}</span>
+                </div>
+                <div class="request-details">
+                    <div class="info-item"><i class="fas fa-location-dot"></i> Deliver to {{ cart.delivery_city }}</div>
+                    <div class="info-item"><i class="fas fa-calendar"></i> By {{ cart.delivery_date|day }}</div>
+                    <div class="info-item"><i class="fas fa-weight-hanging"></i> {{ '%.1f'|format(cart.weight) }} kg</div>
+                    <div class="info-item"><i class="fas fa-hand-holding-dollar"></i> {{ cart.traveler_fee|money }} fee</div>
+                </div>
+                <div class="request-items">
+                    {% for item in cart.line_items %}
+                    <div class="item-row">
+                        <span class="item-name">{{ item.name }}</span>
+                        <span class="item-details"><span>×{{ item.quantity }}</span><span class="item-price">{{ (item.quantity * item.unit_price)|money }}</span></span>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if cart.matches %}
+                <form method="post" action="{{ url_for('main.cart_accept', cart_id=cart.id) }}">
+                    {{ csrf_field() }}
+                    <div class="form-group" style="margin-bottom:10px">
+                        <label for="trip-{{ cart.id }}">Choose a matching trip</label>
+                        <select id="trip-{{ cart.id }}" name="trip_id" class="form-control">
+                            {% for match in cart.matches %}
+                            <option value="{{ match.trip.id }}">
+                                {{ match.trip.from_city }} → {{ match.trip.to_city }} ·
+                                arrives {{ match.trip.arrival_date|day }} ·
+                                {{ match.score }}% match · {{ '%.1f'|format(match.remaining) }} kg free
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="request-actions">
+                        <button class="btn btn-primary" type="submit"><i class="fas fa-check"></i> Accept this cart</button>
+                        <button class="btn btn-outline" type="submit" formaction="{{ url_for('main.cart_decline', cart_id=cart.id) }}" formnovalidate><i class="fas fa-xmark"></i> Not for me</button>
+                        <a class="btn btn-ghost" href="{{ url_for('main.cart_detail', cart_id=cart.id) }}">Details</a>
+                    </div>
+                </form>
+                {% else %}
+                <div class="verification-note">
+                    <strong><i class="fas fa-triangle-exclamation"></i> No eligible trip</strong>
+                    <p>You need a verified trip to {{ cart.delivery_city }} arriving by {{ cart.delivery_date|day }} with {{ '%.1f'|format(cart.weight) }} kg free.</p>
+                </div>
+                <div class="request-actions">
+                    <a class="btn btn-outline" href="{{ url_for('main.trips') }}"><i class="fas fa-plane"></i> Add or verify a trip</a>
+                    <form method="post" action="{{ url_for('main.cart_decline', cart_id=cart.id) }}" class="inline-form">
+                        {{ csrf_field() }}
+                        <button class="btn btn-ghost" type="submit"><i class="fas fa-xmark"></i> Hide</button>
+                    </form>
+                </div>
+                {% endif %}
+            </article>
+            {% else %}
+            {{ empty('fa-bell-slash', 'No open requests', 'New buyer requests in your destination cities will appear here.') }}
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="tab-content active">
+            <h2><i class="fas fa-passport"></i> Trip verification</h2>
+            <p>Every trip needs a flight ticket or receipt. The administrator reviews it before buyers can see you.</p>
+            <div class="document-requirements">
+                <h4>What to upload</h4>
+                <ul>
+                    <li>A clear photo of your flight ticket or booking receipt</li>
+                    <li>The page showing your name and travel dates</li>
+                    <li>JPG, PNG, WEBP or PDF</li>
+                    <li>Your trip stays hidden until the administrator approves it</li>
+                </ul>
+            </div>
+
+            {% for trip in trips %}
+            <div class="trip-verification-card {{ trip.status }}">
+                <div class="trip-verification-header">
+                    <div class="trip-verification-title"><i class="fas fa-plane"></i> {{ trip.from_city }} → {{ trip.to_city }}</div>
+                    <span class="verification-status badge-{{ trip.status }}">{{ trip.status|title }}</span>
+                </div>
+                <div class="trip-verification-details">
+                    <div class="info-item"><i class="fas fa-calendar"></i> {{ trip.departure_date|day }} → {{ trip.arrival_date|day }}</div>
+                    <div class="info-item"><i class="fas fa-weight-hanging"></i> {{ trip.capacity_kg }} kg capacity</div>
+                    <div class="info-item"><i class="fas fa-hand-holding-dollar"></i> {{ trip.fee|money }} per cart</div>
+                    <div class="info-item"><i class="fas fa-box"></i> {{ '%.1f'|format(trip.used_kg) }} kg booked</div>
+                </div>
+                {% if trip.status != 'verified' %}
+                <form method="post" action="{{ url_for('main.trip_documents', trip_id=trip.id) }}" enctype="multipart/form-data">
+                    {{ csrf_field() }}
+                    <div class="form-group" style="margin-bottom:10px">
+                        <label for="doc-{{ trip.id }}">Flight ticket or receipt photo</label>
+                        <input type="file" id="doc-{{ trip.id }}" name="document" class="form-control" accept="image/*,.pdf" required>
+                    </div>
+                    <button class="btn btn-primary btn-small" type="submit" style="width:auto"><i class="fas fa-upload"></i> Submit for verification</button>
+                </form>
+                {% else %}
+                <p class="small muted"><i class="fas fa-circle-check" style="color:var(--success)"></i> Verified — visible to buyers and matching.</p>
+                {% endif %}
+            </div>
+            {% else %}
+            {{ empty('fa-plane', 'No trips scheduled', 'Add your next trip to start accepting buyer requests.') }}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <div class="section-header" style="margin-bottom:12px"><h2>Next trips</h2></div>
+            {% if upcoming %}
+            <div class="upcoming-trips">
+                {% for trip in upcoming %}
+                <div class="upcoming-trip">
+                    <h4>{{ trip.from_city }} → {{ trip.to_city }}</h4>
+                    <p><i class="fas fa-calendar"></i> {{ trip.arrival_date|day }}</p>
+                    <p><i class="fas fa-weight-hanging"></i> {{ '%.1f'|format(trip.capacity_kg - trip.used_kg) }} kg free · {{ trip.fee|money }} fee</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="small muted">No verified upcoming trips.</p>
+            {% endif %}
+            <button class="btn btn-outline" type="button" data-open-modal="tripModal" style="width:100%;margin-top:12px"><i class="fas fa-plus"></i> Add trip</button>
+        </section>
+
+        <section class="sidebar-box">
+            <div class="rating-display">
+                <div class="rating-stars">
+                    {% for star in range(1, 6) %}<i class="fas fa-star{% if star > (current_user.rating or 0)|round|int %}-o{% endif %}"></i>{% endfor %}
+                </div>
+                <div class="rating-value">{{ '%.1f'|format(current_user.rating or 0) }}</div>
+                <div class="rating-count">{{ deliveries }} deliveries · traveler rating</div>
+            </div>
+        </section>
+
+        <section class="sidebar-box">
+            <div class="section-header" style="margin-bottom:12px"><h2>Capacity</h2></div>
+            {% if active_trip %}
+            <div class="capacity-display">
+                <div class="capacity-text"><span>{{ active_trip.from_city }} → {{ active_trip.to_city }}</span><strong>{{ '%.1f'|format(active_trip.capacity_kg - active_trip.used_kg) }} kg free</strong></div>
+                <div class="capacity-bar"><div class="capacity-fill" style="width: {{ (active_trip.used_kg / active_trip.capacity_kg * 100)|round(1) }}%"></div></div>
+                <div class="capacity-text"><span>{{ active_trip.departure_date|day }}</span><span>{{ active_trip.capacity_kg }} kg total</span></div>
+            </div>
+            {% else %}
+            <p class="small muted">Add a verified trip to unlock matching.</p>
+            {% endif %}
+        </section>
+    </aside>
+</div>
+
+<div class="modal" id="tripModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Add a trip</h3>
+            <button class="close-modal" type="button" data-close-modal aria-label="Close">&times;</button>
+        </div>
+        <form method="post" action="{{ url_for('main.trip_add') }}" enctype="multipart/form-data">
+            {{ csrf_field() }}
+            <div class="form-row">
+                <div class="form-group"><label for="from-city">From</label><input id="from-city" name="from_city" class="form-control" placeholder="Paris, France" required></div>
+                <div class="form-group"><label for="to-city">To</label><input id="to-city" name="to_city" class="form-control" placeholder="Tunis" required></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="departure">Departure date</label><input type="date" id="departure" name="departure_date" class="form-control" required></div>
+                <div class="form-group"><label for="arrival">Arrival date</label><input type="date" id="arrival" name="arrival_date" class="form-control" required></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="capacity">Capacity (kg)</label><input type="number" min="1" max="50" step="0.5" id="capacity" name="capacity" class="form-control" value="25" required></div>
+                <div class="form-group"><label for="fee">Fee per cart (DT)</label><input type="number" min="0" step="1" id="fee" name="fee" class="form-control" value="5" required></div>
+            </div>
+            <div class="form-group"><label for="notes">Notes (optional)</label><textarea id="notes" name="notes" class="form-control" rows="2" placeholder="Anything buyers should know"></textarea></div>
+            <div class="form-group">
+                <label for="trip-proof">Flight ticket or receipt photo <span class="required-mark">*</span></label>
+                <input type="file" id="trip-proof" name="document" class="form-control" accept="image/*,.pdf" required>
+                <p class="form-hint"><i class="fas fa-shield-halved"></i> Required. The admin checks this before buyers can see your trip.</p>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit"><i class="fas fa-plus"></i> Add trip for review</button>
+                <button class="btn btn-outline" type="button" data-close-modal>Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="receiptModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Upload purchase receipt</h3>
+            <button class="close-modal" type="button" data-close-modal aria-label="Close">&times;</button>
+        </div>
+        <p class="small muted" id="receipt-caption" style="margin-bottom:14px">This receipt is shared with the buyer and verified by the administrator.</p>
+        <form id="receiptForm" method="post" enctype="multipart/form-data">
+            {{ csrf_field() }}
+            <div class="form-row">
+                <div class="form-group"><label for="receipt-store">Store</label><input id="receipt-store" name="store" class="form-control" required></div>
+                <div class="form-group"><label for="receipt-amount">Amount spent (DT)</label><input type="number" min="0" step="0.01" id="receipt-amount" name="amount" class="form-control" required></div>
+            </div>
+            <div class="form-group"><label for="receipt-date">Purchase date</label><input type="date" id="receipt-date" name="purchase_date" class="form-control" required></div>
+            <div class="form-group"><label for="receipt-file">Receipt photo</label><input type="file" id="receipt-file" name="receipt" class="form-control" accept="image/*,.pdf" required></div>
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit"><i class="fas fa-receipt"></i> Save receipt</button>
+                <button class="btn btn-outline" type="button" data-close-modal>Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const receiptForm = document.getElementById('receiptForm');
+    document.querySelectorAll('[data-receipt-cart]').forEach(button => {
+        button.addEventListener('click', () => {
+            receiptForm.action = '/carts/' + button.dataset.receiptCart + '/receipt';
+            document.getElementById('receipt-store').value = button.dataset.receiptStore || '';
+            document.getElementById('receipt-caption').textContent =
+                'Receipt for ' + (button.dataset.receiptBuyer || 'the buyer') + ' · cart #' + button.dataset.receiptCart;
+            document.getElementById('receipt-date').value = new Date().toISOString().slice(0, 10);
+        });
+    });
+</script>
+{% endblock %}

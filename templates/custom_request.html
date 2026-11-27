@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}Request from a store{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-link"></i> Custom sourcing</span>
+        <h1>Request anything from any store</h1>
+        <p>Paste a Shein, Amazon, Zara or any online cart link. A verified traveler buys it abroad and brings it to you.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.travelers_page') }}"><i class="fas fa-plane"></i> Browse travelers</a>
+        <a class="btn btn-ghost" href="{{ url_for('main.sourcing') if current_user.role in ('seller', 'pro') else url_for('main.escrow') }}"><i class="fas fa-shield-halved"></i> My escrow</a>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <section class="panel">
+        <div class="panel-head">
+            <div>
+                <h2><i class="fas fa-cart-shopping"></i> Your request</h2>
+                <p>The traveler sees the exact store link and your instructions.</p>
+            </div>
+        </div>
+
+        {% if traveler %}
+        <div class="notice" style="margin-bottom:16px">
+            <i class="fas fa-plane"></i>
+            <div>
+                Requesting <strong>{{ traveler.name }}</strong>
+                {% if trip %} · {{ trip.from_city }} → {{ trip.to_city }} · arrives {{ trip.arrival_date|day }}{% endif %}.
+                Only this traveler can accept it.
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('main.custom_request', traveler_id=traveler.id if traveler else none) }}">
+            {{ csrf_field() }}
+            {% if traveler %}<input type="hidden" name="preferred_traveler_id" value="{{ traveler.id }}">{% endif %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="store-name">Online store</label>
+                    <input type="text" id="store-name" name="store_name" class="form-control" placeholder="Shein" value="{{ values.store_name }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="external-url">Cart link</label>
+                    <input type="url" id="external-url" name="external_url" class="form-control" placeholder="https://www.shein.com/cart/..." value="{{ values.external_url }}" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="item-name">Item description</label>
+                <input type="text" id="item-name" name="item_name" class="form-control" placeholder="Black summer dress, size M" value="{{ values.item_name }}" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="item-price">Item price (DT)</label>
+                    <input type="number" min="0.01" step="0.01" id="item-price" name="item_price" class="form-control" placeholder="120" value="{{ values.item_price }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="weight">Weight (kg)</label>
+                    <input type="number" min="0.1" step="0.1" id="weight" name="weight" class="form-control" placeholder="1.2" value="{{ values.weight }}" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="delivery-city">Delivery city</label>
+                    <input type="text" id="delivery-city" name="delivery_city" class="form-control" value="{{ values.delivery_city }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="delivery-date">Deliver by</label>
+                    <input type="date" id="delivery-date" name="delivery_date" class="form-control" value="{{ values.delivery_date }}" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="traveler-fee">Traveler fee (DT)</label>
+                <input type="number" min="0" step="0.5" id="traveler-fee" name="traveler_fee" class="form-control" value="{{ values.traveler_fee }}" required>
+                <p class="form-hint">Paid to the traveler after delivery. Added to your escrow total.</p>
+            </div>
+            <div class="form-group">
+                <label for="instructions">Shopping instructions (optional)</label>
+                <textarea id="instructions" name="instructions" class="form-control" rows="3" placeholder="Colour, size, alternatives if out of stock…">{{ values.instructions }}</textarea>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane"></i> Publish request</button>
+                <a class="btn btn-outline" href="{{ url_for('main.sourcing') if current_user.role in ('seller', 'pro') else url_for('main.buyer_dashboard') }}">Cancel</a>
+            </div>
+        </form>
+    </section>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">Escrow protection</h2>
+            <div class="timeline" style="margin-top:10px">
+                <div class="timeline-item"><span class="timeline-dot">1</span><h5>Traveler accepts</h5><p>They confirm they can buy it on their trip.</p></div>
+                <div class="timeline-item"><span class="timeline-dot">2</span><h5>You pay escrow</h5><p>Item price + traveler fee are held by Abroad.</p></div>
+                <div class="timeline-item"><span class="timeline-dot">3</span><h5>2-day receipt</h5><p>No receipt upload in 2 days? You are refunded automatically.</p></div>
+                <div class="timeline-item"><span class="timeline-dot">4</span><h5>Admin verifies</h5><p>You and the traveler are notified after verification.</p></div>
+            </div>
+        </section>
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">Good to know</h2>
+            <ul class="feature-list">
+                <li><i class="fas fa-check"></i> Works with any public cart link</li>
+                <li><i class="fas fa-check"></i> Only verified travelers can accept</li>
+                <li><i class="fas fa-check"></i> Your money is held until delivery</li>
+                <li><i class="fas fa-check"></i> Admin verifies the purchase receipt</li>
+            </ul>
+        </section>
+    </aside>
+</div>
+{% endblock %}

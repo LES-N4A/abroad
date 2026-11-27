@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty %}
+{% block title %}Audit log{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-clipboard-list"></i> Admin</span>
+        <h1>Audit log</h1>
+        <p>Every verification, suspension and staff change, in order.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.admin_dashboard') }}"><i class="fas fa-gauge-high"></i> Overview</a>
+    </div>
+</div>
+
+{% if actions %}
+<div class="filter-row">
+    <a class="filter-chip {% if not action_filter %}active{% endif %}" href="{{ url_for('main.admin_audit') }}">All</a>
+    {% for action in actions %}
+    <a class="filter-chip {% if action_filter == action %}active{% endif %}" href="{{ url_for('main.admin_audit', action=action) }}">{{ action }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<section class="panel">
+    {% if entries %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
+            <tbody>
+                {% for entry in entries %}
+                <tr>
+                    <td class="small muted">{{ entry.created_at|when }}</td>
+                    <td>{{ entry.actor_name or 'system' }}{% if entry.actor_role %} <span class="small muted">· {{ entry.actor_role }}</span>{% endif %}</td>
+                    <td><code>{{ entry.action }}</code></td>
+                    <td class="small">{{ entry.entity }}{% if entry.entity_id %} #{{ entry.entity_id }}{% endif %}</td>
+                    <td class="small muted">{{ entry.details or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ empty('fa-clipboard-list', 'Nothing logged yet', 'Receipt verifications, trip approvals and staff changes appear here.') }}
+    {% endif %}
+</section>
+{% endblock %}

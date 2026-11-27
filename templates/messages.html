@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, avatar, empty %}
+{% block title %}Messages{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-comment-dots"></i> Messages</span>
+        <h1>Conversations</h1>
+        <p>Coordinate meetups and deliveries with buyers, travelers and sellers.</p>
+    </div>
+</div>
+
+<div class="thread-layout">
+    <section class="panel" style="padding:14px">
+        <h2 style="font-size:15px;margin:4px 8px 10px"><i class="fas fa-users"></i> People</h2>
+        <div class="thread-list">
+            {% for contact in contacts %}
+            <a class="thread-contact {% if partner and partner.id == contact.id %}active{% endif %}"
+               href="{{ url_for('main.messages') }}?with={{ contact.id }}">
+                {{ avatar(contact.name) }}
+                <div style="min-width:0">
+                    <div class="thread-name">{{ contact.store_name or contact.name }}</div>
+                    <small>{{ ROLE_LABEL[contact.role] }}{% if contact.exchanges %} · {{ contact.exchanges }} message{{ '' if contact.exchanges == 1 else 's' }}{% endif %}</small>
+                </div>
+            </a>
+            {% else %}
+            <p class="small muted" style="padding:10px">No other accounts yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel">
+        {% if partner %}
+        <div class="section-header" style="margin-bottom:14px">
+            <h2 style="font-size:16px">
+                {{ avatar(partner.name) }}
+                <span>{{ partner.store_name or partner.name }}<span class="small muted" style="display:block;font-weight:500">{{ ROLE_LABEL[partner.role] }}</span></span>
+            </h2>
+            <a class="btn btn-outline btn-small" href="{{ url_for('main.settings') }}"><i class="fas fa-user"></i> Profile</a>
+        </div>
+
+        <div class="thread-messages">
+            {% for message in thread %}
+            <div class="bubble {% if message.sender_id == current_user.id %}mine{% endif %}">
+                {{ message.body }}
+                <div class="bubble-meta">{{ message.created_at|when }}{% if message.sender_id == current_user.id %} · you{% endif %}</div>
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding:26px">
+                <i class="fas fa-comment"></i>
+                <h3>Start the conversation</h3>
+                <p>Say hello and agree on a delivery point.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <form class="thread-compose" method="post" action="{{ url_for('main.message_send') }}">
+            {{ csrf_field() }}
+            <input type="hidden" name="recipient_id" value="{{ partner.id }}">
+            <input type="text" name="body" class="form-control" placeholder="Write a message…" maxlength="1000" required autocomplete="off">
+            <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane"></i> Send</button>
+        </form>
+        {% else %}
+        {{ empty('fa-comments', 'Choose a conversation', 'Select a buyer, traveler or seller from the left to read and reply.') }}
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

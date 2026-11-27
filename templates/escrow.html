@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, status, cart_status, empty %}
+{% block title %}Escrow{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-shield-halved"></i> Escrow</span>
+        <h1>{{ 'My sourcing escrow' if current_user.role in ('seller', 'pro') else 'Your protected deliveries' }}</h1>
+        <p>{{ active_total|money }} held across funded carts{% if payment_due %} · {{ payment_due|money }} waiting for payment{% endif %}. Money moves only when you confirm.</p>
+    </div>
+    <div class="page-head-actions">
+        {% if current_user.role in ('seller', 'pro') %}
+        <a class="btn btn-outline" href="{{ url_for('main.sourcing') }}"><i class="fas fa-cart-shopping"></i> Sourcing requests</a>
+        <a class="btn btn-primary" href="{{ url_for('main.custom_request') }}"><i class="fas fa-link"></i> New store request</a>
+        {% else %}
+        <a class="btn btn-outline" href="{{ url_for('main.orders') }}"><i class="fas fa-box"></i> Orders</a>
+        <a class="btn btn-primary" href="{{ url_for('main.custom_request') }}"><i class="fas fa-link"></i> Request a store item</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if payment_due %}
+<div class="notice warning">
+    <i class="fas fa-lock"></i>
+    <div><strong>{{ payment_due|money }} is waiting for escrow funding.</strong> Pay below so your traveler can buy the items. They then have 2 days to upload the receipt or you are refunded automatically.</div>
+</div>
+{% endif %}
+
+{% if carts %}
+<div class="dashboard-grid">
+    <div class="main-content">
+        <div class="section-header">
+            <h2><i class="fas fa-lock"></i> Requests &amp; carts</h2>
+            <span class="badge badge-locked">{{ carts|length }} total</span>
+        </div>
+
+        {% for cart in carts %}
+        <article class="cart-card">
+            <div class="cart-header">
+                <div class="cart-title">
+                    <i class="fas {{ 'fa-link' if cart.is_custom else 'fa-store' }}"></i> {{ cart.store_name }} · #{{ cart.id }}
+                    {% if cart.is_custom %}<span class="badge badge-soft">Custom store</span>{% endif %}
+                </div>
+                {{ cart_status(cart) }}
+            </div>
+            <div class="cart-info">
+                <div class="info-item"><i class="fas fa-plane"></i> {{ cart.traveler_name or 'Waiting for a traveler' }}</div>
+                <div class="info-item"><i class="fas fa-location-dot"></i> {{ cart.delivery_city }}</div>
+                <div class="info-item"><i class="fas fa-calendar"></i> {{ cart.delivery_date|day }}</div>
+                <div class="info-item"><i class="fas fa-weight-hanging"></i> {{ '%.1f'|format(cart.weight) }} kg</div>
+                <div class="info-item"><i class="fas fa-money-bill"></i> {{ cart.total|money }} items</div>
+                <div class="info-item"><i class="fas fa-hand-holding-dollar"></i> {{ cart.traveler_fee|money }} traveler fee</div>
+            </div>
+
+            {% if cart.external_url %}
+            <div class="notice" style="margin:10px 0">
+                <i class="fas fa-link"></i>
+                <div>Store cart: <a class="text-link" href="{{ cart.external_url }}" target="_blank" rel="noopener noreferrer">open the original cart link</a></div>
+            </div>
+            {% endif %}
+
+            <div class="cart-items">
+                {% for item in cart.line_items %}
+                <div class="item-row">
+                    <span class="item-name">{{ item.name }}</span>
+                    <span class="item-details"><span>×{{ item.quantity }}</span><span class="item-price">{{ (item.quantity * item.unit_price)|money }}</span></span>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if cart.payment_due %}
+            <div class="notice warning" style="margin:10px 0">
+                <i class="fas fa-clock"></i>
+                <div>Traveler accepted. Fund escrow to let them purchase your items.</div>
+            </div>
+            <div class="cart-actions">
+                <form method="post" action="{{ url_for('main.pay_escrow', cart_id=cart.id) }}">
+                    {{ csrf_field() }}
+                    <button class="btn btn-success" type="submit"><i class="fas fa-shield-halved"></i> Pay {{ (cart.total + cart.traveler_fee)|money }} into escrow</button>
+                </form>
+                <form method="post" action="{{ url_for('main.cart_cancel', cart_id=cart.id) }}">
+                    {{ csrf_field() }}
+                    <button class="btn btn-ghost danger-text" type="submit"><i class="fas fa-xmark"></i> Cancel request</button>
+                </form>
+                <a class="btn btn-outline" href="{{ url_for('main.messages', **{'with': cart.traveler_id}) }}"><i class="fas fa-comment"></i> Message traveler</a>
+            </div>
+            {% elif cart.status == 'assigned' and cart.paid %}
+            <div class="notice" style="margin:10px 0">
+                <i class="fas fa-receipt"></i>
+                <div>
+                    {% if cart.receipt_status == 'pending' %}
+                    Receipt uploaded — waiting for administrator verification.
+                    {% elif cart.receipt_status == 'rejected' %}
+                    Receipt rejected: {{ cart.receipt_note }}. The traveler must re-upload before the deadline.
+                    {% else %}
+                    Escrow funded. Receipt due by <strong>{{ cart.receipt_due_at[:10]|day if cart.receipt_due_at else '—' }}</strong>. If it is not uploaded, you are refunded automatically.
+                    {% endif %}
+                </div>
+            </div>
+            {% if cart.receipt_file %}
+            <div class="cart-actions">
+                <a class="btn btn-outline" href="{{ cart.receipt_file }}" target="_blank" rel="noopener"><i class="fas fa-receipt"></i> View receipt</a>
+                <a class="btn btn-ghost" href="{{ url_for('main.cart_detail', cart_id=cart.id) }}">View details</a>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            {% if cart.status == 'delivered' and cart.code %}
+            <div class="tracking-note" style="background:var(--success-soft);border-color:#c9eddd;margin-bottom:12px">
+                <div>
+                    <h4><i class="fas fa-key"></i> Release code: <span style="font-family:Consolas,monospace;letter-spacing:2px">{{ cart.code }}</span></h4>
+                    <p>Share only after inspecting the item. Expires 24 hours after issue.</p>
+                </div>
+                <button class="copy-code" type="button" data-copy="{{ cart.code }}" style="width:auto;margin:0;padding:8px 14px"><i class="fas fa-copy"></i> Copy</button>
+            </div>
+            <form method="post" action="{{ url_for('main.release_escrow', cart_id=cart.id) }}" class="inline-form" style="gap:8px;flex-wrap:wrap">
+                {{ csrf_field() }}
+                <input type="text" name="code" class="form-control" placeholder="Enter release code" style="max-width:190px" required>
+                <button class="btn btn-success" type="submit"><i class="fas fa-lock-open"></i> Release {{ (cart.total + cart.traveler_fee)|money }}</button>
+                <a class="btn btn-ghost" href="{{ url_for('main.cart_detail', cart_id=cart.id) }}">View timeline</a>
+            </form>
+            {% elif cart.status not in ('assigned',) %}
+            <div class="cart-actions">
+                <a class="btn btn-outline" href="{{ url_for('main.cart_detail', cart_id=cart.id) }}"><i class="fas fa-eye"></i> View details</a>
+                {% if cart.traveler_id %}
+                <a class="btn btn-ghost" href="{{ url_for('main.messages', **{'with': cart.traveler_id}) }}"><i class="fas fa-comment"></i> Message traveler</a>
+                {% endif %}
+                {% if cart.status in ('purchased', 'in_transit', 'delivered') %}
+                <a class="btn btn-ghost danger-text" href="{{ url_for('main.disputes') }}"><i class="fas fa-triangle-exclamation"></i> Report issue</a>
+                {% endif %}
+                {% if cart.status == 'open' %}
+                <span class="badge badge-pending"><i class="fas fa-clock"></i> Waiting for traveler</span>
+                <form method="post" action="{{ url_for('main.cart_cancel', cart_id=cart.id) }}">
+                    {{ csrf_field() }}
+                    <button class="btn btn-ghost danger-text" type="submit"><i class="fas fa-xmark"></i> Cancel</button>
+                </form>
+                {% endif %}
+                {% if cart.status == 'completed' %}
+                <span class="badge badge-verified"><i class="fas fa-check"></i> Escrow settled</span>
+                {% endif %}
+                {% if cart.status == 'disputed' %}
+                <span class="badge badge-rejected"><i class="fas fa-scale-balanced"></i> Under review</span>
+                {% endif %}
+                {% if cart.refunded_at %}
+                <span class="badge badge-rejected"><i class="fas fa-rotate-left"></i> Refunded automatically</span>
+                {% elif cart.cancelled_at %}
+                <span class="badge badge-rejected"><i class="fas fa-xmark"></i> Cancelled</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">How escrow works</h2>
+            <div class="timeline" style="margin-top:10px">
+                <div class="timeline-item"><span class="timeline-dot">1</span><h5>You request</h5><p>A traveler accepts your local or online-store request.</p></div>
+                <div class="timeline-item"><span class="timeline-dot">2</span><h5>You pay escrow</h5><p>Abroad holds the item total and traveler fee.</p></div>
+                <div class="timeline-item"><span class="timeline-dot">3</span><h5>Traveler buys</h5><p>They upload a receipt within 2 days or you are refunded.</p></div>
+                <div class="timeline-item"><span class="timeline-dot">4</span><h5>Admin verifies</h5><p>The receipt is checked before the order moves forward.</p></div>
+                <div class="timeline-item"><span class="timeline-dot">5</span><h5>You release</h5><p>After delivery and your release code, the traveler is paid.</p></div>
+            </div>
+        </section>
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">Need help?</h2>
+            <p class="small muted" style="margin-bottom:12px">If something is wrong with a delivery, open a dispute before releasing the money.</p>
+            <a class="btn btn-outline" href="{{ url_for('main.disputes') }}" style="width:100%"><i class="fas fa-scale-balanced"></i> Open a dispute</a>
+            <a class="btn btn-ghost" href="{{ url_for('main.support') }}" style="width:100%;margin-top:8px"><i class="fas fa-headset"></i> Contact support</a>
+        </section>
+    </aside>
+</div>
+{% else %}
+{{ empty('fa-shield-halved', 'No escrow yet', 'When a traveler accepts your request, it will appear here with a protected balance.') }}
+<div style="text-align:center;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+    <a class="btn btn-primary" href="{{ url_for('main.custom_request') }}"><i class="fas fa-link"></i> Request from a store</a>
+    <a class="btn btn-outline" href="{{ url_for('main.local_market') }}"><i class="fas fa-location-dot"></i> Local marketplace</a>
+</div>
+{% endif %}
+{% endblock %}

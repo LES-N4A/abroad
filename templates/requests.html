@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty %}
+{% block title %}Traveler requests{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-bell"></i> Request board</span>
+        <h1>Requests you can carry</h1>
+        <p>{{ carts|length }} open request{{ '' if carts|length == 1 else 's' }} ranked against your verified trips.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.trips') }}"><i class="fas fa-plane"></i> My trips</a>
+        <a class="btn btn-primary" href="{{ url_for('main.traveler_dashboard') }}"><i class="fas fa-house"></i> Dashboard</a>
+    </div>
+</div>
+
+{% if carts %}
+<div class="dashboard-grid">
+    <div class="main-content">
+        <div class="section-header"><h2><i class="fas fa-boxes-stacked"></i> Open carts</h2><span class="badge badge-pending">{{ carts|length }} available</span></div>
+        {% for cart in carts %}
+        <article class="request-card">
+            <div class="request-header">
+                <div class="request-title">{{ cart.store_name }} · {{ cart.buyer_name }}</div>
+                <span class="request-time"><i class="fas fa-clock"></i> {{ cart.created_at|when }}</span>
+            </div>
+            <div class="request-details">
+                <div class="info-item"><i class="fas fa-location-dot"></i> Deliver to {{ cart.delivery_city }}</div>
+                <div class="info-item"><i class="fas fa-calendar"></i> By {{ cart.delivery_date|day }}</div>
+                <div class="info-item"><i class="fas fa-weight-hanging"></i> {{ '%.1f'|format(cart.weight) }} kg</div>
+                <div class="info-item"><i class="fas fa-hand-holding-dollar"></i> {{ cart.traveler_fee|money }} fee</div>
+            </div>
+            <div class="request-items">
+                {% for item in cart.line_items %}
+                <div class="item-row">
+                    <span class="item-name">{{ item.name }}</span>
+                    <span class="item-details"><span>×{{ item.quantity }}</span><span class="item-price">{{ (item.quantity * item.unit_price)|money }}</span></span>
+                </div>
+                {% endfor %}
+            </div>
+            {% if cart.instructions %}<p class="small muted" style="margin-bottom:10px"><i class="fas fa-note-sticky"></i> {{ cart.instructions }}</p>{% endif %}
+
+            {% if cart.matches %}
+            <form method="post" action="{{ url_for('main.cart_accept', cart_id=cart.id) }}">
+                {{ csrf_field() }}
+                <div class="form-group" style="margin-bottom:10px">
+                    <label for="trip-{{ cart.id }}">Best matching trip</label>
+                    <select id="trip-{{ cart.id }}" name="trip_id" class="form-control">
+                        {% for match in cart.matches %}
+                        <option value="{{ match.trip.id }}">
+                            {{ match.trip.from_city }} → {{ match.trip.to_city }} · arrives {{ match.trip.arrival_date|day }} ·
+                            {{ match.score }}% match · {{ '%.1f'|format(match.remaining) }} kg free
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="request-actions">
+                    <button class="btn btn-primary" type="submit"><i class="fas fa-check"></i> Accept and reserve</button>
+                    <button class="btn btn-outline" type="submit" formaction="{{ url_for('main.cart_decline', cart_id=cart.id) }}" formnovalidate><i class="fas fa-xmark"></i> Hide request</button>
+                    <a class="btn btn-ghost" href="{{ url_for('main.cart_detail', cart_id=cart.id) }}">Details</a>
+                </div>
+            </form>
+            {% else %}
+            <div class="verification-note">
+                <strong><i class="fas fa-triangle-exclamation"></i> No matching trip</strong>
+                <p>You need a verified trip to {{ cart.delivery_city }} arriving by {{ cart.delivery_date|day }} with enough free capacity.</p>
+            </div>
+            <div class="request-actions">
+                <a class="btn btn-outline" href="{{ url_for('main.trips') }}"><i class="fas fa-plane"></i> Add a trip</a>
+                <form method="post" action="{{ url_for('main.cart_decline', cart_id=cart.id) }}" class="inline-form">
+                    {{ csrf_field() }}
+                    <button class="btn btn-ghost" type="submit"><i class="fas fa-xmark"></i> Hide</button>
+                </form>
+            </div>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">How matching works</h2>
+            <p class="small muted">The score combines destination, arrival date, available capacity and traveler fee. Higher is better.</p>
+            <div class="info-list" style="margin-top:12px">
+                <div class="info-row"><span>Same destination</span><strong>Required</strong></div>
+                <div class="info-row"><span>Arrival before delivery</span><strong>Required</strong></div>
+                <div class="info-row"><span>Enough free weight</span><strong>Required</strong></div>
+                <div class="info-row"><span>Fee &amp; fill rate</span><strong>Score</strong></div>
+            </div>
+        </section>
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">Your stats</h2>
+            <div class="rating-display">
+                <div class="rating-value">{{ '%.1f'|format(current_user.rating or 0) }}</div>
+                <div class="rating-count">traveler rating</div>
+            </div>
+            <a class="btn btn-outline" href="{{ url_for('main.wallet') }}" style="width:100%;margin-top:10px"><i class="fas fa-wallet"></i> View earnings</a>
+        </section>
+    </aside>
+</div>
+{% else %}
+{{ empty('fa-bell-slash', 'No requests available', 'Requests appear when buyers add items and your trips can carry them.') }}
+<div style="text-align:center"><a class="btn btn-primary" href="{{ url_for('main.trips') }}"><i class="fas fa-plane"></i> Add or verify a trip</a></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty, product_image %}
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow">
+            {% if product.listing_type == 'local' %}
+            <i class="fas fa-location-dot"></i> Local Tunisian marketplace
+            {% else %}
+            <i class="fas fa-plane"></i> Travel shop
+            {% endif %}
+        </span>
+        <h1>{{ product.name }}</h1>
+        <p>
+            {{ product.category }} · {{ product.store_name or product.seller_name }}
+            {% if product.seller_city %} · {{ product.seller_city }}{% endif %}
+        </p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.shop') }}"><i class="fas fa-arrow-left"></i> Back to shop</a>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="main-content">
+        <section class="panel">
+            <div class="product-gallery">
+                <div class="gallery-main">
+                    <img id="galleryMain" src="{{ images[0].url }}" alt="{{ product.name }}">
+                </div>
+                {% if images|length > 1 %}
+                <div class="gallery-thumbs">
+                    {% for image in images %}
+                    <button class="gallery-thumb {% if loop.first %}active{% endif %}" type="button"
+                            data-gallery-src="{{ image.url }}" aria-label="Photo {{ loop.index }}">
+                        <img src="{{ image.url }}" alt="{{ product.name }} photo {{ loop.index }}">
+                    </button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-start;margin-top:18px">
+                <div>
+                    <div class="product-price" style="font-size:22px">{{ product.price|money }}</div>
+                    <div class="small muted" style="margin-top:4px">
+                        <i class="fas fa-weight-hanging"></i> {{ product.weight_kg }} kg ·
+                        {% if product.listing_type == 'local' %}
+                        <i class="fas fa-location-dot"></i> Delivered inside Tunisia
+                        {% else %}
+                        <i class="fas fa-plane"></i> Carried by a traveler
+                        {% endif %}
+                    </div>
+                    <div class="small muted" style="margin-top:4px">
+                        <span class="stock-tag {% if product.stock == 0 %}stock-out{% elif product.stock <= 5 %}stock-low{% else %}stock-in{% endif %}">
+                            {{ 'Out of stock' if product.stock == 0 else product.stock ~ ' available' }}
+                        </span>
+                        {% if review_count %}
+                        · <span class="review-stars">{% for i in range(1, 6) %}{{ '★' if i <= review_average|round(0, 'floor') else '☆' }}{% endfor %}</span>
+                        {{ review_average }}/5 ({{ review_count }} review{{ '' if review_count == 1 else 's' }})
+                        {% else %}
+                        · <span class="muted">No reviews yet</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    {% if product.seller_id == current_user.id and current_user.role in ('seller', 'pro') %}
+                    <a class="btn btn-outline" href="{{ url_for('main.products_page', edit=product.id) }}"><i class="fas fa-pen"></i> Edit listing</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <p style="margin-top:16px">{{ product.description or 'No description yet.' }}</p>
+
+            {% if product.seller_id != current_user.id and current_user.role == 'buyer' %}
+            <form method="post"
+                  action="{{ url_for('main.product_order', product_id=product.id) if product.listing_type == 'local' else url_for('main.request_product', product_id=product.id) }}"
+                  class="buy-panel">
+                {{ csrf_field() }}
+
+                {% if options.colors %}
+                <div class="variant-group">
+                    <div class="variant-label">Colour / model: <strong id="chosenColor">{{ options.colors[0] }}</strong></div>
+                    <div class="variant-options">
+                        {% for color in options.colors %}
+                        <label class="variant-chip">
+                            <input type="radio" name="color" value="{{ color }}" {% if loop.first %}checked{% endif %}>
+                            {{ color }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if options.sizes %}
+                <div class="variant-group">
+                    <div class="variant-label">Size</div>
+                    <div class="variant-options">
+                        {% for size in options.sizes %}
+                        <label class="variant-chip">
+                            <input type="radio" name="size" value="{{ size }}" {% if loop.first %}checked{% endif %}>
+                            {{ size }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="buy-row">
+                    <label class="small muted" for="order-quantity">Quantity</label>
+                    <input id="order-quantity" type="number" name="quantity" min="1" max="{{ product.stock }}"
+                           value="1" class="form-control qty-input">
+                    <button class="btn btn-primary" type="submit" {% if product.stock < 1 %}disabled{% endif %}>
+                        {% if product.listing_type == 'local' %}
+                        <i class="fas fa-bag-shopping"></i> Order now
+                        {% else %}
+                        <i class="fas fa-plus"></i> Request this item
+                        {% endif %}
+                    </button>
+                </div>
+                <p class="small muted" style="margin-top:8px">
+                    {% if product.listing_type == 'local' %}
+                    Total updates with quantity. The seller confirms your order before delivery.
+                    {% else %}
+                    This goes into your traveler request and stays in escrow until you confirm delivery.
+                    {% endif %}
+                </p>
+            </form>
+            {% endif %}
+
+            {% if product.seller_id == current_user.id and current_user.role in ('seller', 'pro') and images|selectattr('id')|list %}
+            <div class="section-header" style="margin-top:20px"><h2 style="font-size:14px">Manage photos</h2></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                {% for image in images if image.id %}
+                <form method="post" action="{{ url_for('main.product_image_delete', product_id=product.id, image_id=image.id) }}"
+                      data-confirm="Remove this photo from the listing?">
+                    {{ csrf_field() }}
+                    <div style="width:96px">
+                        <img src="{{ image.url }}" alt="" style="width:96px;height:76px;object-fit:cover;border-radius:10px;border:1px solid var(--line)">
+                        <button class="btn btn-outline danger-text btn-small" type="submit" style="width:100%;margin-top:6px"><i class="fas fa-trash"></i> Remove</button>
+                    </div>
+                </form>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </section>
+
+        <div class="tabs">
+            <a class="tab {% if tab == 'reviews' %}active{% endif %}" href="{{ url_for('main.product_detail', product_id=product.id, tab='reviews') }}">
+                <i class="fas fa-star"></i> Reviews &amp; comments ({{ review_count }})
+            </a>
+            <a class="tab {% if tab == 'suggestions' %}active{% endif %}" href="{{ url_for('main.product_detail', product_id=product.id, tab='suggestions') }}">
+                <i class="fas fa-wand-magic-sparkles"></i> You may also like
+            </a>
+        </div>
+
+        {% if tab == 'reviews' %}
+        <section class="panel">
+            <div class="panel-head">
+                <div>
+                    <h2><i class="fas fa-comments"></i> What shoppers say</h2>
+                    <p>{% if review_count %}{{ review_average }}/5 from {{ review_count }} review{{ '' if review_count == 1 else 's' }}.{% else %}Be the first to review this product.{% endif %}</p>
+                </div>
+            </div>
+
+            {% if reviews %}
+            <div class="review-list">
+                {% for review in reviews %}
+                <article class="review-item">
+                    <div class="review-head">
+                        <strong>{{ review.buyer_name }}{% if review.buyer_city %} · <span class="small muted">{{ review.buyer_city }}</span>{% endif %}
+                            {% if review.order_id %}<span class="badge badge-verified" style="margin-left:6px"><i class="fas fa-check"></i> Verified purchase</span>{% endif %}
+                        </strong>
+                        <span class="review-stars">{% for i in range(1, 6) %}{{ '★' if i <= review.rating else '☆' }}{% endfor %}</span>
+                    </div>
+                    <p class="small muted" style="margin-bottom:4px">{{ review.created_at|when }}</p>
+                    <p>{{ review.comment or 'No comment left.' }}</p>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            {{ empty('fa-comment', 'No reviews yet', 'Share what you think so other shoppers know what to expect.') }}
+            {% endif %}
+
+            {% if product.seller_id == current_user.id %}
+            <div class="notice" style="margin-top:16px">
+                <i class="fas fa-circle-info"></i>
+                <div>You cannot review your own listing.</div>
+            </div>
+            {% elif not can_review %}
+            <div class="notice" style="margin-top:16px">
+                <i class="fas fa-lock"></i>
+                <div>Reviews open once this product has been delivered to you. Order it first — then come back and tell other shoppers how it went.</div>
+            </div>
+            {% else %}
+            <form method="post" action="{{ url_for('main.product_review_add', product_id=product.id) }}" style="margin-top:18px">
+                {{ csrf_field() }}
+                <div class="section-header" style="margin-bottom:10px">
+                    <h2 style="font-size:14px">{% if my_review %}Update your review{% else %}Write a review{% endif %}</h2>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Rating</label>
+                        <div class="rating-picker">
+                            {% for value in range(1, 6) %}
+                            <label>
+                                <input type="radio" name="rating" value="{{ value }}" {% if my_review and my_review.rating == value %}checked{% elif not my_review and value == 5 %}checked{% endif %}>
+                                {{ value }} <i class="fas fa-star" style="color:var(--gold-500)"></i>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="form-group full">
+                        <label for="review-comment">Your comment</label>
+                        <textarea id="review-comment" name="comment" class="form-control" rows="3"
+                                  placeholder="Fit, quality, delivery speed…">{{ my_review.comment if my_review else '' }}</textarea>
+                    </div>
+                </div>
+                <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane"></i> {% if my_review %}Update review{% else %}Post review{% endif %}</button>
+            </form>
+            {% endif %}
+        </section>
+        {% else %}
+        <section class="panel">
+            <div class="panel-head">
+                <div>
+                    <h2><i class="fas fa-wand-magic-sparkles"></i> You may also like</h2>
+                    <p>Picked for you from {{ product.category|lower }} and what you shopped before.</p>
+                </div>
+            </div>
+            {% if suggestions %}
+            <div class="products-grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr))">
+                {% for item in suggestions %}
+                <article class="product-card">
+                    <div class="product-image-container">
+                        {% if item.listing_type == 'local' %}<span class="product-badge"><i class="fas fa-location-dot"></i> Local</span>{% endif %}
+                        {{ product_image(item, 'product-image') }}
+                    </div>
+                    <div class="product-details">
+                        <div class="product-title"><a class="text-link" href="{{ url_for('main.product_detail', product_id=item.id) }}">{{ item.name }}</a></div>
+                        <div class="product-price" style="margin-top:4px">{{ item.price|money }}</div>
+                        <div class="product-stats">
+                            <span><i class="fas fa-store"></i> {{ item.store_name or item.seller_name }}</span>
+                            <span><i class="fas fa-location-dot"></i> {{ item.seller_city }}</span>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            {{ empty('fa-wand-magic-sparkles', 'Nothing to suggest yet', 'More listings will appear here as sellers add products.') }}
+            {% endif %}
+        </section>
+        {% endif %}
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <div class="section-header" style="margin-bottom:12px"><h2>Seller</h2></div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <span class="user-avatar">{{ (product.store_name or product.seller_name)|initials }}</span>
+                <div>
+                    <strong>{{ product.store_name or product.seller_name }}</strong>
+                    <div class="small muted"><i class="fas fa-star" style="color:var(--gold-500)"></i> {{ '%.1f'|format(product.seller_rating or 0) }} · {{ product.seller_city }}</div>
+                </div>
+            </div>
+            {% if product.seller_id != current_user.id %}
+            <a class="btn btn-outline" style="width:100%;margin-top:14px" href="{{ url_for('main.messages', **{'with': product.seller_id}) }}"><i class="fas fa-comment"></i> Message seller</a>
+            {% endif %}
+        </section>
+
+        <section class="sidebar-box">
+            <div class="section-header" style="margin-bottom:12px"><h2>Quick actions</h2></div>
+            <div class="quick-actions">
+                <a class="btn btn-outline" href="{{ url_for('main.local_market') }}"><i class="fas fa-location-dot"></i> Local marketplace</a>
+                <a class="btn btn-outline" href="{{ url_for('main.travelers_page') }}"><i class="fas fa-plane"></i> Travelers</a>
+            </div>
+        </section>
+    </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var main = document.getElementById('galleryMain');
+    if (!main) return;
+    document.querySelectorAll('[data-gallery-src]').forEach(function (thumb) {
+        thumb.addEventListener('click', function () {
+            main.src = thumb.getAttribute('data-gallery-src');
+            document.querySelectorAll('.gallery-thumb').forEach(function (other) {
+                other.classList.remove('active');
+            });
+            thumb.classList.add('active');
+        });
+    });
+
+    /* Choosing a colour/model switches the gallery photo when there is one per option. */
+    var colours = document.querySelectorAll('input[name="color"]');
+    colours.forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            var index = Array.prototype.indexOf.call(colours, radio);
+            var thumbs = document.querySelectorAll('.gallery-thumb');
+            if (thumbs.length) thumbs[index % thumbs.length].click();
+            var label = document.getElementById('chosenColor');
+            if (label) label.textContent = radio.value;
+        });
+    });
+})();
+</script>
+{% endblock %}

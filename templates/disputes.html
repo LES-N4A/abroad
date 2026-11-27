@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty %}
+{% block title %}Disputes{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-scale-balanced"></i> Resolution centre</span>
+        <h1>Disputes</h1>
+        <p>If a delivery goes wrong, pause the escrow and let our team review it.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.support') }}"><i class="fas fa-headset"></i> Support</a>
+        {% if current_user.role == 'buyer' %}
+        <a class="btn btn-outline" href="{{ url_for('main.escrow') }}"><i class="fas fa-shield-halved"></i> Escrow</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div>
+        {% if current_user.role == 'buyer' and cart_options %}
+        <section class="panel" style="margin-bottom:20px">
+            <div class="panel-head"><div><h2><i class="fas fa-triangle-exclamation"></i> Open a dispute</h2><p>Only active deliveries can be disputed.</p></div></div>
+            <form method="post" action="{{ url_for('main.dispute_add') }}">
+                {{ csrf_field() }}
+                <div class="form-group">
+                    <label for="cart">Delivery</label>
+                    <select id="cart" name="cart_id" class="form-control" required>
+                        <option value="">Choose a cart…</option>
+                        {% for cart in cart_options %}
+                        <option value="{{ cart.id }}">#{{ cart.id }} · {{ cart.store_name }} · {{ cart.status|replace('_', ' ') }} · {{ cart.delivery_city }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reason">What happened?</label>
+                    <textarea id="reason" name="reason" class="form-control" rows="4" placeholder="Describe the problem with the item or the delivery…" required></textarea>
+                </div>
+                <div class="form-actions" style="justify-content:flex-start">
+                    <button class="btn btn-danger" type="submit"><i class="fas fa-scale-balanced"></i> Submit dispute</button>
+                </div>
+            </form>
+        </section>
+        {% endif %}
+
+        <section class="panel">
+            <div class="panel-head"><div><h2><i class="fas fa-folder-open"></i> Your cases</h2><p>Status updates from the resolution team.</p></div></div>
+            {% if disputes %}
+            <div class="activity-list">
+                {% for dispute in disputes %}
+                <div class="activity-item">
+                    <div class="activity-icon" style="color:var(--danger);background:var(--danger-soft)"><i class="fas fa-scale-balanced"></i></div>
+                    <div class="activity-details" style="flex:1">
+                        <h5>
+                            Cart #{{ dispute.cart_id }} · {{ dispute.store_name }}
+                            <span class="badge {{ 'badge-pending' if dispute.status == 'open' else 'badge-verified' }}" style="margin-left:6px">{{ dispute.status|title }}</span>
+                        </h5>
+                        <p>{{ dispute.reason }}</p>
+                        <p style="color:var(--muted-light)">
+                            Opened {{ dispute.created_at|when }} · buyer {{ dispute.buyer_name if dispute.buyer_name is defined else 'you' }}
+                            {% if dispute.traveler_name %} · traveler {{ dispute.traveler_name }}{% endif %}
+                        </p>
+                    </div>
+                    <a class="btn btn-outline btn-small" href="{{ url_for('main.cart_detail', cart_id=dispute.cart_id) }}" style="flex:0 0 auto">View cart</a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            {{ empty('fa-scale-balanced', 'No disputes', 'If everything goes smoothly, this page stays empty.') }}
+            {% endif %}
+        </section>
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:10px">What happens next</h2>
+            <div class="timeline">
+                <div class="timeline-item"><span class="timeline-dot">1</span><h5>Escrow paused</h5><p>The money is no longer released to the seller.</p></div>
+                <div class="timeline-item"><span class="timeline-dot">2</span><h5>We review</h5><p>Support checks the timeline and receipts.</p></div>
+                <div class="timeline-item"><span class="timeline-dot">3</span><h5>Resolution</h5><p>Refund, partial release or delivery confirmation.</p></div>
+            </div>
+        </section>
+        <section class="sidebar-box">
+            <div class="notice warning" style="margin:0">
+                <i class="fas fa-circle-info"></i>
+                <div>This is a classroom demo, so disputes are recorded but not reviewed by a real support team.</div>
+            </div>
+        </section>
+    </aside>
+</div>
+{% endblock %}

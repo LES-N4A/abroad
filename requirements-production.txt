@@ -1,0 +1,73 @@
+# Production Requirements for Abroad Marketplace
+
+# Core Framework
+Flask>=3.0,<4
+Werkzeug>=3.0,<4
+
+# Database
+psycopg2-binary>=2.9.9  # PostgreSQL driver
+SQLAlchemy>=2.0.23      # ORM (optional but recommended)
+alembic>=1.13.0         # Database migrations
+
+# Caching & Sessions
+redis>=5.0.1
+Flask-Session>=0.6.0
+
+# Background Tasks
+celery>=5.3.4
+celery[redis]>=5.3.4
+
+# Security
+Flask-Limiter>=3.5.0    # Rate limiting
+Flask-Talisman>=1.1.0   # Security headers
+Flask-Cors>=4.0.0       # CORS if needed
+python-dotenv>=1.0.0    # Environment variables
+cryptography>=41.0.7    # Enhanced encryption
+
+# Email
+sendgrid>=6.11.0
+
+# SMS
+twilio>=8.11.0
+
+# Payment Processing
+stripe>=7.7.0
+
+# File Storage & Processing
+boto3>=1.34.13          # AWS SDK (S3, SES)
+Pillow>=10.1.0          # Image processing
+python-magic>=0.4.27    # File type detection
+cloudinary>=1.36.0      # Alternative to S3
+
+# Input Validation & Sanitization
+marshmallow>=3.20.1     # Schema validation
+bleach>=6.1.0           # HTML sanitization
+email-validator>=2.1.0  # Email validation
+phonenumbers>=8.13.27   # Phone validation
+
+# Monitoring & Logging
+sentry-sdk[flask]>=1.39.1
+python-json-logger>=2.0.7
+
+# Security Scanning
+safety>=2.3.5           # Check for vulnerable dependencies
+
+# Testing
+pytest>=8.0.0
+pytest-cov>=4.1.0
+pytest-flask>=1.3.0
+pytest-mock>=3.12.0
+locust>=2.20.0          # Load testing
+
+# Production Server
+gunicorn>=22.0.0
+
+# Utilities
+click>=8.1.7            # CLI commands
+requests>=2.31.0        # HTTP client
+python-dateutil>=2.8.2  # Date handling
+pytz>=2023.3            # Timezone handling
+
+# OCR (Optional - for receipt scanning)
+# google-cloud-vision>=3.5.0  # Google Vision API
+# pytesseract>=0.3.10         # Tesseract OCR

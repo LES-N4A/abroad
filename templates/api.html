@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}API access{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-code"></i> Developers</span>
+        <h1>API access</h1>
+        <p>Read your product catalogue from your own storefront or script.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.products_page') }}"><i class="fas fa-shirt"></i> Products</a>
+    </div>
+</div>
+
+{% if new_token %}
+<div class="notice success" style="display:block">
+    <strong style="display:block;margin-bottom:6px"><i class="fas fa-key"></i> Copy your new API key now</strong>
+    <div class="code-inline">
+        <span id="new-token">{{ new_token }}</span>
+        <button class="copy-btn" type="button" data-copy="{{ new_token }}">Copy</button>
+    </div>
+    <p class="small" style="margin-top:8px">It is shown only once. Store it in an environment variable, never in client-side code.</p>
+</div>
+{% endif %}
+
+<div class="detail-grid">
+    <div>
+        <section class="panel" style="margin-bottom:20px">
+            <div class="panel-head"><div><h2><i class="fas fa-key"></i> API keys</h2><p>Bearer tokens for the products endpoint.</p></div></div>
+            <form method="post" action="{{ url_for('main.api_token_create') }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px">
+                {{ csrf_field() }}
+                <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0">
+                    <label for="label">Key label</label>
+                    <input type="text" id="label" name="label" class="form-control" placeholder="e.g. Shopify sync" maxlength="60">
+                </div>
+                <button class="btn btn-primary" type="submit"><i class="fas fa-plus"></i> Generate key</button>
+            </form>
+
+            {% if tokens %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead><tr><th>Label</th><th>Prefix</th><th>Created</th><th>Last used</th><th>Status</th></tr></thead>
+                    <tbody>
+                        {% for token in tokens %}
+                        <tr>
+                            <td><strong>{{ token.label }}</strong></td>
+                            <td><code>{{ token.prefix }}…</code></td>
+                            <td class="small muted">{{ token.created_at|when }}</td>
+                            <td class="small muted">{{ token.last_used_at|when if token.last_used_at else 'Never' }}</td>
+                            <td><span class="badge {{ 'badge-rejected' if token.revoked else 'badge-verified' }}">{{ 'Revoked' if token.revoked else 'Active' }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <form method="post" action="{{ url_for('main.api_token_revoke') }}" style="margin-top:16px" data-confirm="Revoke every API key? Existing integrations will stop working.">
+                {{ csrf_field() }}
+                <button class="btn btn-outline danger-text" type="submit"><i class="fas fa-ban"></i> Revoke all keys</button>
+            </form>
+            {% else %}
+            <p class="small muted">No keys yet. Generate one to call the API.</p>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <div class="panel-head"><div><h2><i class="fas fa-terminal"></i> Example request</h2><p>The endpoint returns only your catalogue.</p></div></div>
+            <div class="code-inline" style="display:block;line-height:1.8">
+                curl -H "Authorization: Bearer abr_…" \<br>
+                &nbsp;&nbsp;{{ request.url_root }}api/v1/products
+            </div>
+            <p class="small muted" style="margin-top:10px">Response: JSON with <code>account</code>, <code>count</code> and a <code>products</code> array (id, name, price, stock, category, featured).</p>
+        </section>
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">Endpoint</h2>
+            <div class="info-list">
+                <div class="info-row"><span>Method</span><strong>GET</strong></div>
+                <div class="info-row"><span>Path</span><strong>/api/v1/products</strong></div>
+                <div class="info-row"><span>Auth</span><strong>Bearer token</strong></div>
+                <div class="info-row"><span>Scope</span><strong>Your products only</strong></div>
+            </div>
+        </section>
+        <section class="sidebar-box">
+            <div class="notice warning" style="margin:0"><i class="fas fa-triangle-exclamation"></i><div>Keys are stored as SHA-256 hashes. A generated key cannot be displayed again after you leave this page.</div></div>
+        </section>
+    </aside>
+</div>
+{% endblock %}

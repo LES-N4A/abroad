@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, status, empty, product_image %}
+{% block title %}Pro dashboard{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow gold"><i class="fas fa-certificate"></i> Pro seller workspace</span>
+        <h1>{{ current_user.store_name or current_user.name }}</h1>
+        <p>Business overview for your {{ stats.products }} products and {{ stats.orders }} orders.</p>
+    </div>
+    <div class="page-head-actions">
+        <button class="btn btn-primary" type="button" data-open-modal="addProductModal"><i class="fas fa-plus"></i> Add product</button>
+        <a class="btn btn-outline" href="{{ url_for('main.products_bulk') }}"><i class="fas fa-file-csv"></i> Bulk upload</a>
+    </div>
+</div>
+
+<section class="live-status-section">
+    <div class="status-header">
+        <h2><i class="fas fa-chart-line"></i> Store performance</h2>
+        <span class="live-badge"><span class="pulsing-dot"></span> Live from SQLite</span>
+    </div>
+    <div class="status-stats">
+        <div class="status-stat-box"><strong>{{ stats.revenue|money }}</strong><span>Lifetime revenue</span></div>
+        <div class="status-stat-box"><strong>{{ stats.orders }}</strong><span>Orders received</span></div>
+        <div class="status-stat-box"><strong>{{ stats.pending }}</strong><span>Awaiting processing</span></div>
+        <div class="status-stat-box"><strong>{{ stats.balance|money }}</strong><span>Available balance</span></div>
+    </div>
+
+    {% set peak = chart|map(attribute='value')|max %}
+    <div class="spark-panel">
+        <div>
+            <div class="spark-bars">
+                {% for point in chart %}
+                <div class="spark-bar {% if peak > 0 and point.value == peak %}is-peak{% endif %}"
+                     style="--h: {{ point.height }}%" data-day="{{ point.label }}"
+                     title="{{ point.label }} · {{ point.value|money }}"></div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="spark-legend">
+            <div class="spark-total">{{ chart|sum(attribute='value')|money }}</div>
+            <div class="spark-delta"><i class="fas fa-arrow-trend-up"></i> last 7 days</div>
+            <small>Sales credited to your wallet</small>
+        </div>
+    </div>
+</section>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon products"><i class="fas fa-shirt"></i></div>
+        <div class="stat-content"><h3>{{ stats.products }}</h3><p>Active products</p>
+            <div class="stat-change positive"><i class="fas fa-boxes"></i> {{ stats.low_stock }} low stock</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon rating"><i class="fas fa-star"></i></div>
+        <div class="stat-content"><h3>{{ '%.1f'|format(stats.rating or 0) }}</h3><p>Average rating</p>
+            <div class="stat-change positive"><i class="fas fa-comment"></i> {{ stats.reviews }} reviews</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon visitors"><i class="fas fa-users"></i></div>
+        <div class="stat-content"><h3>{{ messages }}</h3><p>Unread messages</p>
+            <div class="stat-change positive"><i class="fas fa-envelope"></i> from buyers</div></div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="main-content">
+        <div class="section-header">
+            <h2><i class="fas fa-bag-shopping"></i> Latest orders</h2>
+            <a href="{{ url_for('main.orders') }}">Manage orders</a>
+        </div>
+        {% if orders %}
+        <div class="orders-list">
+            {% for order in orders[:5] %}
+            <div class="order-item">
+                <div class="order-info">
+                    <h4>{{ order.product_name }}</h4>
+                    <p>{{ order.buyer_name }} · {{ order.buyer_city }} · {{ order.created_at|when }}</p>
+                </div>
+                <div>
+                    <div class="order-amount">{{ order.total|money }}</div>
+                    {{ status(order.status) }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        {{ empty('fa-bag-shopping', 'No orders yet', 'Your pro catalogue is live. Orders will appear here.') }}
+        {% endif %}
+
+        <div class="section-header" style="margin-top:36px">
+            <h2><i class="fas fa-shirt"></i> Catalogue</h2>
+            <a href="{{ url_for('main.products_page') }}">Manage all products</a>
+        </div>
+        {% if products %}
+        <div class="products-grid">
+            {% for product in products[:4] %}
+            <article class="product-card">
+                <div class="product-image-container">
+                    {% if product.featured %}<span class="product-badge">Featured</span>{% endif %}
+                    {{ product_image(product, 'product-image') }}
+                </div>
+                <div class="product-details">
+                    <div class="product-meta-row"><span>{{ product.category }}</span>
+                        <span class="stock-tag {% if product.stock == 0 %}stock-out{% elif product.stock <= 5 %}stock-low{% else %}stock-in{% endif %}">{{ product.stock }} left</span>
+                    </div>
+                    <div class="product-title"><a class="text-link" href="{{ url_for('main.product_detail', product_id=product.id) }}">{{ product.name }}</a></div>
+                    <div class="product-price" style="margin-top:4px">{{ product.price|money }}</div>
+                    <div class="product-stats"><span>{{ product.sold }} sold</span><span>{{ product.weight_kg }} kg</span></div>
+                </div>
+                <div class="product-actions">
+                    <a class="btn btn-outline btn-small" href="{{ url_for('main.product_detail', product_id=product.id) }}"><i class="fas fa-eye"></i> View</a>
+                    <a class="btn btn-outline btn-small" href="{{ url_for('main.products_page', edit=product.id) }}"><i class="fas fa-pen"></i> Edit</a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        {{ empty('fa-shirt', 'No products yet', 'Add your first product or use bulk upload.') }}
+        {% endif %}
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:10px">Pro tools</h2>
+            <div class="tool-item" onclick="window.location='{{ url_for('main.products_bulk') }}'">
+                <div class="tool-icon"><i class="fas fa-file-csv"></i></div>
+                <div><div>Bulk product upload</div><div>Add a whole catalogue from CSV</div></div>
+            </div>
+            <div class="tool-item" onclick="window.location='{{ url_for('main.team') }}'">
+                <div class="tool-icon"><i class="fas fa-users"></i></div>
+                <div><div>Team management</div><div>Invite staff to your workspace</div></div>
+            </div>
+            <div class="tool-item" onclick="window.location='{{ url_for('main.api_page') }}'">
+                <div class="tool-icon"><i class="fas fa-code"></i></div>
+                <div><div>API access</div><div>Connect your own storefront</div></div>
+            </div>
+            <div class="tool-item" onclick="window.location='{{ url_for('main.promotions') }}'">
+                <div class="tool-icon"><i class="fas fa-bullhorn"></i></div>
+                <div><div>Promotions</div><div>Feature products in the shop</div></div>
+            </div>
+            <div class="tool-item" onclick="window.location='{{ url_for('main.analytics') }}'">
+                <div class="tool-icon"><i class="fas fa-chart-pie"></i></div>
+                <div><div>Full analytics</div><div>Revenue and product insights</div></div>
+            </div>
+        </section>
+
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:12px">Top products</h2>
+            {% if top_products %}
+            <div class="activity-list">
+                {% for item in top_products %}
+                <div class="activity-item">
+                    <div class="activity-icon"><i class="fas fa-ranking-star"></i></div>
+                    <div class="activity-details">
+                        <h5>{{ item.name }}</h5>
+                        <p>{{ item.qty }} sold · {{ item.revenue|money }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="muted small">No sales recorded yet.</p>
+            {% endif %}
+        </section>
+    </aside>
+</div>
+
+<div class="modal" id="addProductModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Add new product</h3>
+            <button class="close-modal" type="button" data-close-modal aria-label="Close">&times;</button>
+        </div>
+        <form method="post" action="{{ url_for('main.product_add') }}" enctype="multipart/form-data">
+            {{ csrf_field() }}
+            {% set product = None %}
+            {% include "partials/product_form.html" %}
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit"><i class="fas fa-plus"></i> Save product</button>
+                <button class="btn btn-outline" type="button" data-close-modal>Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, status, product_image %}
+{% block title %}Order #{{ order.id }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-bag-shopping"></i> Local marketplace order</span>
+        <h1>Order #{{ order.id }}</h1>
+        <p>{{ order.product_name }}{% if order.variant %} · {{ order.variant }}{% endif %} · placed {{ order.created_at|when }}</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.orders') }}"><i class="fas fa-arrow-left"></i> All orders</a>
+        <a class="btn btn-outline" href="{{ url_for('main.product_detail', product_id=order.product_id) }}"><i class="fas fa-shirt"></i> Open product</a>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="main-content">
+        <section class="panel">
+            <div class="tracked-product" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+                {{ product_image(order, 'order-img') }}
+                <div style="flex:1;min-width:180px">
+                    <h3 style="margin:0 0 4px">{{ order.product_name }}</h3>
+                    <p class="small muted" style="margin:0">
+                        {{ order.product_category }} · quantity {{ order.quantity }}
+                        {% if order.variant %} · {{ order.variant }}{% endif %}
+                    </p>
+                </div>
+                <div style="text-align:right">
+                    <div class="product-price">{{ order.total|money }}</div>
+                    {{ status(order.status) }}
+                </div>
+            </div>
+
+            {% if order.status == 'cancelled' %}
+            <div class="notice warning" style="margin-top:16px">
+                <i class="fas fa-ban"></i>
+                <div>This order was cancelled. The stock went back to the seller's catalogue.</div>
+            </div>
+            {% else %}
+            <div class="progress-container" style="margin-top:20px">
+                <div class="progress-bar-bg"></div>
+                <div class="progress-bar-fill" style="width: {{ ((step - 1) / 4 * 80)|round(1) }}%"></div>
+                <div class="steps-wrapper">
+                    {% for label in steps %}
+                    {% set index = loop.index %}
+                    <div class="step-item {% if index < step %}completed{% elif index == step %}active{% endif %}">
+                        <div class="step-circle">{% if index < step %}<i class="fas fa-check"></i>{% else %}{{ index }}{% endif %}</div>
+                        <div class="step-label">{{ label }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="tracking-note" style="margin-top:16px">
+                <div>
+                    {% if order.status == 'cancelled' %}
+                    <h4><i class="fas fa-ban"></i> Cancelled</h4>
+                    <p>{{ order.cancelled_at[:10]|day }} · {{ order.seller_store or order.seller_name }} was notified.</p>
+                    {% elif order.status == 'delivered' %}
+                    <h4><i class="fas fa-box-open"></i> Delivered</h4>
+                    <p>Check the item and confirm you received it, then leave a review.</p>
+                    {% elif order.status == 'shipped' %}
+                    <h4><i class="fas fa-truck-fast"></i> On the way</h4>
+                    <p>{{ order.seller_store or order.seller_name }} shipped your order.</p>
+                    {% elif order.status == 'processing' %}
+                    <h4><i class="fas fa-box"></i> Seller is preparing your order</h4>
+                    <p>You can still cancel before it ships.</p>
+                    {% else %}
+                    <h4><i class="fas fa-clock"></i> Waiting for the seller to confirm</h4>
+                    <p>The seller was notified and will process your order shortly.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if is_buyer %}
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+                {% if order.status in ('new', 'processing') %}
+                <form method="post" action="{{ url_for('main.order_cancel', order_id=order.id) }}"
+                      data-confirm="Cancel this order? The stock goes back to the seller.">
+                    {{ csrf_field() }}
+                    <button class="btn btn-outline danger-text" type="submit"><i class="fas fa-ban"></i> Cancel order</button>
+                </form>
+                {% endif %}
+                {% if order.status == 'delivered' and not order.confirmed_at %}
+                <form method="post" action="{{ url_for('main.order_confirm', order_id=order.id) }}">
+                    {{ csrf_field() }}
+                    <button class="btn btn-success" type="submit"><i class="fas fa-check"></i> Confirm received</button>
+                </form>
+                {% endif %}
+                {% if order.status == 'delivered' %}
+                <a class="btn btn-primary" href="{{ url_for('main.product_detail', product_id=order.product_id, tab='reviews') }}">
+                    <i class="fas fa-star"></i> {% if review %}Edit your review{% else %}Write a review{% endif %}
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if order.confirmed_at %}
+            <p class="small muted" style="margin-top:12px"><i class="fas fa-circle-check"></i> Confirmed by the buyer on {{ order.confirmed_at[:10]|day }}.</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <div class="section-header" style="margin-bottom:12px"><h2>Seller</h2></div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <span class="user-avatar">{{ (order.seller_store or order.seller_name)|initials }}</span>
+                <div>
+                    <strong>{{ order.seller_store or order.seller_name }}</strong>
+                    <div class="small muted"><i class="fas fa-location-dot"></i> {{ order.seller_city }}</div>
+                </div>
+            </div>
+            {% if is_buyer %}
+            <a class="btn btn-outline" style="width:100%;margin-top:14px"
+               href="{{ url_for('main.messages', **{'with': order.seller_id}) }}"><i class="fas fa-comment"></i> Message seller</a>
+            {% endif %}
+        </section>
+
+        <section class="sidebar-box">
+            <div class="section-header" style="margin-bottom:12px"><h2>Buyer</h2></div>
+            <strong>{{ order.buyer_name }}</strong>
+            <div class="small muted"><i class="fas fa-location-dot"></i> {{ order.buyer_city }}</div>
+        </section>
+
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">How this order works</h2>
+            <p class="small muted">Local marketplace orders are handled directly by the seller. Pickup or delivery and payment are agreed between the two of you in messages.</p>
+        </section>
+    </aside>
+</div>
+{% endblock %}

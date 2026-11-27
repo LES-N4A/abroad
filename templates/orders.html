@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, status, empty, product_image %}
+{% block title %}Orders{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-box"></i> Orders</span>
+        <h1>{{ 'Orders to fulfil' if seller_view else 'My orders' }}</h1>
+        <p>{{ orders|length }} order{{ '' if orders|length == 1 else 's' }}{% if active_status %} with status “{{ active_status }}”{% endif %}.</p>
+    </div>
+    {% if seller_view %}
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.analytics') }}"><i class="fas fa-chart-line"></i> Analytics</a>
+        <a class="btn btn-primary" href="{{ url_for('main.products_page') }}"><i class="fas fa-shirt"></i> Products</a>
+    </div>
+    {% else %}
+    <div class="page-head-actions">
+        <a class="btn btn-primary" href="{{ url_for('main.shop') }}"><i class="fas fa-magnifying-glass"></i> Shop more</a>
+    </div>
+    {% endif %}
+</div>
+
+{% if seller_view %}
+<div class="filter-row">
+    <a class="filter-chip {% if not active_status %}active{% endif %}" href="{{ url_for('main.orders') }}">All</a>
+    {% for value, label in [('new', 'New'), ('processing', 'Processing'), ('shipped', 'Shipped'), ('delivered', 'Delivered')] %}
+    <a class="filter-chip {% if active_status == value %}active{% endif %}" href="{{ url_for('main.orders', status=value) }}">{{ label }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if orders %}
+<div class="orders-list">
+    {% for order in orders %}
+    <article class="order-card" style="flex-wrap:wrap">
+        {{ product_image(order) }}
+        <div class="order-details">
+            <div class="order-title">
+                {{ order.product_name }}
+                {% if order.variant %}<span class="small muted">· {{ order.variant }}</span>{% endif %}
+                <span class="small muted">× {{ order.quantity }}</span>
+            </div>
+            <div class="order-meta">
+                <span><i class="fas fa-hashtag"></i> Order #{{ order.id }}</span>
+                {% if seller_view %}
+                <span><i class="fas fa-user"></i> {{ order.buyer_name }} · {{ order.buyer_city }}</span>
+                {% else %}
+                <span><i class="fas fa-store"></i> {{ order.seller_name or order.seller_legal }}</span>
+                {% endif %}
+                <span><i class="fas fa-calendar"></i> {{ order.created_at|when }}</span>
+                <span><i class="fas fa-tag"></i> {{ order.total|money }}</span>
+            </div>
+        </div>
+        {{ status(order.status) }}
+        {% if seller_view %}
+            {% if next_status.get(order.status) %}
+            <form method="post" action="{{ url_for('main.order_advance', order_id=order.id) }}">
+                {{ csrf_field() }}
+                <button class="btn btn-primary" style="padding:8px 14px;font-size:12px" type="submit">
+                    <i class="fas fa-arrow-right"></i> Mark {{ next_status[order.status] }}
+                </button>
+            </form>
+            {% else %}
+            <span class="badge badge-verified"><i class="fas fa-check"></i> Complete</span>
+            {% endif %}
+        {% else %}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <a class="btn btn-outline" style="padding:8px 14px;font-size:12px" href="{{ url_for('main.order_detail', order_id=order.id) }}">
+                <i class="fas fa-truck-fast"></i> Track order
+            </a>
+            {% if order.status == 'delivered' and not order.confirmed_at %}
+            <form method="post" action="{{ url_for('main.order_confirm', order_id=order.id) }}">
+                {{ csrf_field() }}
+                <button class="btn btn-success" style="padding:8px 14px;font-size:12px" type="submit"><i class="fas fa-check"></i> Confirm received</button>
+            </form>
+            {% endif %}
+            {% if order.status == 'delivered' and order.reviewed %}
+            <span class="badge badge-verified"><i class="fas fa-star"></i> Reviewed</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+{{ empty('fa-box-open', 'No orders here', 'Orders will appear as soon as buyers check out.' if seller_view else 'Browse the shop and add an item to a traveler request.') }}
+{% endif %}
+{% endblock %}

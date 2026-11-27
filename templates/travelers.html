@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty %}
+{% block title %}Available travelers{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-plane"></i> Verified travelers</span>
+        <h1>Travelers coming to Tunisia</h1>
+        <p>Every trip below has an administrator-verified flight receipt.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.local_market') }}"><i class="fas fa-location-dot"></i> Local marketplace</a>
+        <a class="btn btn-primary" href="{{ url_for('main.custom_request') }}"><i class="fas fa-link"></i> Request from a store</a>
+    </div>
+</div>
+
+{% if travelers %}
+<div class="travelers-grid">
+    {% for trip in travelers %}
+    <article class="traveler-card">
+        <div class="traveler-card-head">
+            <span class="user-avatar">{{ trip.traveler_name|initials }}</span>
+            <div>
+                <h3>{{ trip.traveler_name }}</h3>
+                <p class="small muted"><i class="fas fa-star" style="color:var(--gold-500)"></i> {{ '%.1f'|format(trip.traveler_rating or 0) }} · {{ trip.deliveries }} deliveries</p>
+            </div>
+            <span class="badge badge-verified"><i class="fas fa-circle-check"></i> Verified</span>
+        </div>
+        <div class="traveler-route">
+            <div><small>From</small><strong>{{ trip.from_city }}</strong></div>
+            <i class="fas fa-plane"></i>
+            <div><small>To</small><strong>{{ trip.to_city }}</strong></div>
+        </div>
+        <div class="info-list">
+            <div class="info-row"><span>Arrives</span><strong>{{ trip.arrival_date|day }}</strong></div>
+            <div class="info-row"><span>Space free</span><strong>{{ '%.1f'|format(trip.remaining_kg) }} kg</strong></div>
+            <div class="info-row"><span>Traveler fee</span><strong>{{ trip.fee|money }}</strong></div>
+        </div>
+        <div class="cart-actions">
+            <a class="btn btn-primary" href="{{ url_for('main.custom_request', traveler_id=trip.traveler_id) }}"><i class="fas fa-paper-plane"></i> Request this traveler</a>
+            <a class="btn btn-ghost" href="{{ url_for('main.messages', **{'with': trip.traveler_id}) }}"><i class="fas fa-comment"></i> Message</a>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+{{ empty('fa-plane', 'No verified travelers right now', 'Trips appear here after an administrator verifies the traveler’s flight receipt.') }}
+{% endif %}
+{% endblock %}

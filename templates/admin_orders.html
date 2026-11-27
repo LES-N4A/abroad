@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status, empty, product_image %}
+{% block title %}All orders{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow gold"><i class="fas fa-box"></i> Marketplace orders</span>
+        <h1>All customer orders</h1>
+        <p>Direct product orders from the global shop and local listings.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.admin_requests') }}"><i class="fas fa-shield-halved"></i> All escrow requests</a>
+        <a class="btn btn-outline" href="{{ url_for('main.admin_dashboard') }}"><i class="fas fa-gauge-high"></i> Overview</a>
+    </div>
+</div>
+
+{% if orders %}
+<div class="panel">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Order</th><th>Product</th><th>Buyer</th><th>Seller</th><th>Total</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>#{{ order.id }}</td>
+                    <td>{{ order.product_name }}</td>
+                    <td>{{ order.buyer_name }}</td>
+                    <td>{{ order.store_name or order.seller_name }}</td>
+                    <td><strong>{{ order.total|money }}</strong></td>
+                    <td>{{ status(order.status) }}</td>
+                    <td>{{ order.created_at|when }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+{{ empty('fa-box', 'No product orders yet', 'Direct product orders will appear here. Escrow travel requests are under All escrow requests.') }}
+{% endif %}
+{% endblock %}

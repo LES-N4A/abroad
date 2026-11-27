@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty %}
+{% block title %}Wallet{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-wallet"></i> Wallet</span>
+        <h1>{{ 'Escrow payments & refunds' if current_user.role == 'buyer' else 'Earnings & payouts' }}</h1>
+        <p>Every top-up, escrow payment, release, refund and payout request is recorded here.</p>
+    </div>
+    <div class="page-head-actions">
+        {% if current_user.role in ('seller', 'pro') %}
+        <a class="btn btn-outline" href="{{ url_for('main.analytics') }}"><i class="fas fa-chart-line"></i> Analytics</a>
+        {% elif current_user.role == 'traveler' %}
+        <a class="btn btn-outline" href="{{ url_for('main.trips') }}"><i class="fas fa-plane"></i> Trips</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="wallet-hero">
+    <div>
+        <small>{{ 'Net escrow activity' if current_user.role == 'buyer' else 'Available balance' }}</small>
+        <div class="wallet-amount">{{ balance|money }}</div>
+        <p style="color:rgba(255,255,255,.65);font-size:12px;margin-top:4px">Escrow funds are released after buyers confirm delivery.</p>
+    </div>
+    <div style="display:grid;gap:10px;min-width:260px">
+        <form method="post" action="{{ url_for('main.wallet_top_up') }}" class="withdraw-form">
+            {{ csrf_field() }}
+            <input type="number" min="1" step="1" max="{{ max_top_up|dinars }}" name="amount" class="form-control" placeholder="Top up (DT)" required>
+            <button class="btn btn-primary" type="submit"><i class="fas fa-plus"></i> Add money</button>
+        </form>
+        {% if can_earn %}
+        <form method="post" action="{{ url_for('main.wallet_payout_request') }}" class="withdraw-form" style="flex-wrap:wrap">
+            {{ csrf_field() }}
+            <input type="number" min="1" step="1" max="{{ balance|dinars }}" name="amount" class="form-control" placeholder="Payout (DT)" required {% if balance <= 0 %}disabled{% endif %}>
+            <select name="method" class="form-control" style="max-width:150px">
+                <option>Bank transfer</option>
+                <option>D17</option>
+                <option>Cash pickup</option>
+            </select>
+            <input type="text" name="details" class="form-control" placeholder="Account or phone number" style="flex:1 1 160px">
+            <button class="btn btn-outline" type="submit" {% if balance <= 0 %}disabled{% endif %}><i class="fas fa-money-bill-transfer"></i> Request payout</button>
+        </form>
+        {% endif %}
+        <p style="color:rgba(255,255,255,.6);font-size:11px;margin:0">Top-ups are demo payments. Payouts are paid by an administrator after review.</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon revenue"><i class="fas fa-arrow-down"></i></div>
+        <div class="stat-content">
+            <h3>{{ credited|money }}</h3>
+            <p>Total credited</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orders"><i class="fas fa-arrow-up"></i></div>
+        <div class="stat-content">
+            <h3>{{ debited|money }}</h3>
+            <p>{{ 'Paid into escrow' if current_user.role == 'buyer' else 'Paid out' }}</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon products"><i class="fas fa-receipt"></i></div>
+        <div class="stat-content"><h3>{{ transactions|length }}</h3><p>Transactions</p></div>
+    </div>
+</div>
+
+{% if can_earn %}
+<section class="panel">
+    <div class="panel-head">
+        <div><h2><i class="fas fa-money-bill-transfer"></i> Payout requests</h2><p>An administrator reviews each request before the money leaves Abroad.</p></div>
+    </div>
+    {% if payouts %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Requested</th><th>Method</th><th>Status</th><th style="text-align:right">Amount</th></tr></thead>
+            <tbody>
+                {% for payout in payouts %}
+                <tr>
+                    <td class="small muted">{{ payout.created_at|when }}</td>
+                    <td><strong>{{ payout.method }}</strong>{% if payout.details %}<br><span class="small muted">{{ payout.details }}</span>{% endif %}</td>
+                    <td>
+                        {% if payout.status == 'pending' %}<span class="badge badge-pending"><i class="fas fa-hourglass-half"></i> Awaiting approval</span>
+                        {% elif payout.status == 'paid' %}<span class="badge badge-verified"><i class="fas fa-check"></i> Paid</span>
+                        {% else %}<span class="badge badge-rejected"><i class="fas fa-rotate-left"></i> Declined — refunded</span>{% endif %}
+                        {% if payout.note %}<br><span class="small muted">{{ payout.note }}</span>{% endif %}
+                    </td>
+                    <td style="text-align:right;font-weight:800">{{ payout.amount|money }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ empty('fa-money-bill-transfer', 'No payout requests', 'Your earnings stay in the wallet until you request a payout.') }}
+    {% endif %}
+</section>
+{% endif %}
+
+<section class="panel">
+    <div class="panel-head">
+        <div><h2><i class="fas fa-clock-rotate-left"></i> Transaction history</h2><p>Newest first.</p></div>
+    </div>
+    {% if transactions %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Description</th><th>Type</th><th>Date</th><th style="text-align:right">Amount</th></tr></thead>
+            <tbody>
+                {% for item in transactions %}
+                <tr>
+                    <td><strong>{{ item.description }}</strong></td>
+                    <td><span class="badge {{ 'badge-verified' if item.amount > 0 else 'badge-delivered' }}">{% if item.kind == 'escrow' %}Escrow payment{% else %}{{ item.kind|replace('_', ' ')|title }}{% endif %}</span></td>
+                    <td class="small muted">{{ item.created_at|when }}</td>
+                    <td style="text-align:right;font-weight:800;color:{{ 'var(--success)' if item.amount > 0 else 'var(--danger)' }}">
+                        {{ '+' if item.amount > 0 else '' }}{{ item.amount|money }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ empty('fa-receipt', 'No transactions yet', 'Top-ups, escrow releases and payouts will be listed here.') }}
+    {% endif %}
+</section>
+{% endblock %}

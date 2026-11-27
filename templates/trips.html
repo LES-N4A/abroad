@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty %}
+{% block title %}Schedule{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-plane"></i> Schedule</span>
+        <h1>Your trips</h1>
+        <p>{{ trips|length }} trip{{ '' if trips|length == 1 else 's' }} · only admin-verified flight receipts are shown to buyers.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.requests_page') }}"><i class="fas fa-bell"></i> Request board</a>
+        <button class="btn btn-primary" type="button" data-open-modal="tripModal"><i class="fas fa-plus"></i> Add trip</button>
+    </div>
+</div>
+
+{% if trips %}
+<div class="dashboard-grid">
+    <div class="main-content">
+        <div class="section-header"><h2><i class="fas fa-calendar-days"></i> Scheduled trips</h2><span class="badge badge-verified">{{ trips|selectattr('status', 'equalto', 'verified')|list|length }} verified</span></div>
+        {% for trip in trips %}
+        <article class="trip-verification-card {{ trip.status }}">
+            <div class="trip-verification-header">
+                <div class="trip-verification-title"><i class="fas fa-plane-departure"></i> {{ trip.from_city }} → {{ trip.to_city }}</div>
+                <span class="verification-status badge-{{ trip.status }}">{{ trip.status|title }}</span>
+            </div>
+            <div class="trip-verification-details">
+                <div class="info-item"><i class="fas fa-calendar"></i> {{ trip.departure_date|day }} → {{ trip.arrival_date|day }}</div>
+                <div class="info-item"><i class="fas fa-weight-hanging"></i> {{ trip.capacity_kg }} kg capacity</div>
+                <div class="info-item"><i class="fas fa-hand-holding-dollar"></i> {{ trip.fee|money }} per cart</div>
+                <div class="info-item"><i class="fas fa-box"></i> {{ '%.1f'|format(trip.used_kg) }} kg booked</div>
+            </div>
+            <div class="capacity-display" style="margin-bottom:10px">
+                <div class="capacity-text"><span>Used capacity</span><strong>{{ '%.1f'|format(trip.used_kg) }} / {{ trip.capacity_kg }} kg</strong></div>
+                <div class="capacity-bar"><div class="capacity-fill" style="width: {{ (trip.used_kg / trip.capacity_kg * 100)|round(1) }}%"></div></div>
+            </div>
+            {% if trip.notes %}<p class="small muted"><i class="fas fa-note-sticky"></i> {{ trip.notes }}</p>{% endif %}
+            {% if trip.rejection_reason %}
+            <div class="notice warning"><i class="fas fa-triangle-exclamation"></i><div><strong>Admin note:</strong> {{ trip.rejection_reason }}</div></div>
+            {% endif %}
+
+            {% if trip.status != 'verified' %}
+            <form method="post" action="{{ url_for('main.trip_documents', trip_id=trip.id) }}" enctype="multipart/form-data">
+                {{ csrf_field() }}
+                <div class="form-group" style="margin-bottom:10px">
+                    <label for="document-{{ trip.id }}">Flight ticket or receipt photo</label>
+                    <input type="file" id="document-{{ trip.id }}" name="document" class="form-control" accept="image/*,.pdf" required>
+                </div>
+                <button class="btn btn-primary btn-small" type="submit" style="width:auto"><i class="fas fa-upload"></i> Submit for verification</button>
+            </form>
+            {% else %}
+            <div class="cart-actions">
+                <a class="btn btn-outline btn-small" href="{{ url_for('main.requests_page') }}"><i class="fas fa-box"></i> Find carts for this trip</a>
+                <span class="badge badge-verified"><i class="fas fa-circle-check"></i> Flight receipt approved</span>
+            </div>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">Why verify?</h2>
+            <p class="small muted">Buyers can only match with trips marked verified. Upload a flight ticket or booking receipt and the administrator reviews it.</p>
+            <div class="document-requirements" style="margin:14px 0 0">
+                <h4>Accepted proof</h4>
+                <ul><li>Flight ticket or booking receipt</li><li>Name and travel dates visible</li><li>JPG, PNG, WEBP or PDF</li></ul>
+            </div>
+        </section>
+        <section class="sidebar-box">
+            <div class="rating-display">
+                <div class="rating-value">{{ '%.1f'|format(current_user.rating or 0) }}</div>
+                <div class="rating-count">traveler rating · {{ current_user.deliveries }} deliveries</div>
+            </div>
+        </section>
+    </aside>
+</div>
+{% else %}
+{{ empty('fa-plane', 'No trips yet', 'Add your next trip with a flight receipt and start accepting carts after admin approval.') }}
+<div style="text-align:center"><button class="btn btn-primary" type="button" data-open-modal="tripModal"><i class="fas fa-plus"></i> Add your first trip</button></div>
+{% endif %}
+
+<div class="modal" id="tripModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Add a trip</h3>
+            <button class="close-modal" type="button" data-close-modal aria-label="Close">&times;</button>
+        </div>
+        <form method="post" action="{{ url_for('main.trip_add') }}" enctype="multipart/form-data">
+            {{ csrf_field() }}
+            <div class="form-row">
+                <div class="form-group"><label for="from-city">From</label><input id="from-city" name="from_city" class="form-control" placeholder="Paris, France" required></div>
+                <div class="form-group"><label for="to-city">To</label><input id="to-city" name="to_city" class="form-control" placeholder="Tunis" required></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="departure">Departure date</label><input type="date" id="departure" name="departure_date" class="form-control" required></div>
+                <div class="form-group"><label for="arrival">Arrival date</label><input type="date" id="arrival" name="arrival_date" class="form-control" required></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="capacity">Capacity (kg)</label><input type="number" min="1" max="50" step="0.5" id="capacity" name="capacity" class="form-control" value="25" required></div>
+                <div class="form-group"><label for="fee">Fee per cart (DT)</label><input type="number" min="0" step="1" id="fee" name="fee" class="form-control" value="5" required></div>
+            </div>
+            <div class="form-group"><label for="notes">Notes (optional)</label><textarea id="notes" name="notes" class="form-control" rows="2"></textarea></div>
+            <div class="form-group">
+                <label for="trip-proof">Flight ticket or receipt photo <span class="required-mark">*</span></label>
+                <input type="file" id="trip-proof" name="document" class="form-control" accept="image/*,.pdf" required>
+                <p class="form-hint"><i class="fas fa-shield-halved"></i> Required. The admin verifies it before your trip goes live.</p>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit"><i class="fas fa-plus"></i> Add trip for review</button>
+                <button class="btn btn-outline" type="button" data-close-modal>Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+instance/*.sqlite
+instance/uploads/
+flask.log
+instance/cloudflared.exe
+instance/tunnel.log
+abroad-release.tar.gz
+.env
+logs/
+instance/*.log
+pytest-of-*

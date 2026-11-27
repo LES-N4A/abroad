@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty %}
+{% block title %}Payouts{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-money-bill-transfer"></i> Finance</span>
+        <h1>Payout requests</h1>
+        <p>The money is already held out of the wallet. Marking a request paid confirms the transfer was sent; declining returns it to the wallet.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.admin_dashboard') }}"><i class="fas fa-arrow-left"></i> Dashboard</a>
+    </div>
+</div>
+
+<section class="panel">
+    <div class="panel-head">
+        <div><h2><i class="fas fa-hourglass-half"></i> Awaiting approval</h2><p>{{ pending|length }} request{{ '' if pending|length == 1 else 's' }}.</p></div>
+    </div>
+    {% if pending %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Requested by</th><th>Method</th><th>Requested</th><th style="text-align:right">Amount</th><th>Decision</th></tr></thead>
+            <tbody>
+                {% for payout in pending %}
+                <tr>
+                    <td>
+                        <strong>{{ payout.user_name }}</strong>
+                        <br><span class="small muted">{{ payout.email }} · {{ payout.role|title }}</span>
+                    </td>
+                    <td>
+                        <strong>{{ payout.method }}</strong>
+                        {% if payout.details %}<br><span class="small muted">{{ payout.details }}</span>{% endif %}
+                    </td>
+                    <td class="small muted">{{ payout.created_at|when }}</td>
+                    <td style="text-align:right;font-weight:800">{{ payout.amount|money }}</td>
+                    <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <form method="post" action="{{ url_for('main.admin_payout_decide', payout_id=payout.id, action='pay') }}" class="inline-form">
+                                {{ csrf_field() }}
+                                <button class="btn btn-success" type="submit"><i class="fas fa-check"></i> Mark paid</button>
+                            </form>
+                            <form method="post" action="{{ url_for('main.admin_payout_decide', payout_id=payout.id, action='reject') }}" class="inline-form" style="display:flex;gap:6px">
+                                {{ csrf_field() }}
+                                <input type="text" name="note" class="form-control" placeholder="Reason" style="max-width:130px">
+                                <button class="btn btn-outline danger-text" type="submit"><i class="fas fa-xmark"></i> Decline</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ empty('fa-circle-check', 'Nothing to pay', 'Every payout request has been decided.') }}
+    {% endif %}
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <div><h2><i class="fas fa-clock-rotate-left"></i> Recent decisions</h2><p>Last 25 decided requests.</p></div>
+    </div>
+    {% if decided %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Requested by</th><th>Method</th><th>Decided</th><th>Status</th><th style="text-align:right">Amount</th></tr></thead>
+            <tbody>
+                {% for payout in decided %}
+                <tr>
+                    <td><strong>{{ payout.user_name }}</strong><br><span class="small muted">{{ payout.email }}</span></td>
+                    <td>{{ payout.method }}{% if payout.details %}<br><span class="small muted">{{ payout.details }}</span>{% endif %}</td>
+                    <td class="small muted">{{ payout.decided_at|when }}</td>
+                    <td>
+                        {% if payout.status == 'paid' %}
+                        <span class="badge badge-verified"><i class="fas fa-check"></i> Paid</span>
+                        {% else %}
+                        <span class="badge badge-rejected"><i class="fas fa-rotate-left"></i> Declined</span>
+                        {% endif %}
+                        {% if payout.note %}<br><span class="small muted">{{ payout.note }}</span>{% endif %}
+                    </td>
+                    <td style="text-align:right;font-weight:800">{{ payout.amount|money }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ empty('fa-receipt', 'No decisions yet', 'Approved and declined requests will be listed here.') }}
+    {% endif %}
+</section>
+{% endblock %}

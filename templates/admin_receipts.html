@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty %}
+{% block title %}Verify receipts{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow gold"><i class="fas fa-receipt"></i> Purchase verification</span>
+        <h1>Receipts waiting for approval</h1>
+        <p>Check the store, amount and image. The buyer is refunded automatically if the 2-day deadline passes without a valid receipt.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.admin_trips') }}"><i class="fas fa-plane-departure"></i> Flight receipts</a>
+        <a class="btn btn-outline" href="{{ url_for('main.admin_dashboard') }}"><i class="fas fa-gauge-high"></i> Overview</a>
+    </div>
+</div>
+
+{% if receipts %}
+<div class="admin-card-list">
+    {% for cart in receipts %}
+    <article class="panel admin-review-card">
+        <div class="panel-head">
+            <div>
+                <span class="eyebrow"><i class="fas fa-store"></i> {{ cart.store_name }} · cart #{{ cart.id }}</span>
+                <h2>{{ cart.receipt_amount|money }} receipt</h2>
+                <p>{{ cart.buyer_name }} · {{ cart.traveler_name or 'Traveler' }} · due {{ cart.receipt_due_at[:10]|day if cart.receipt_due_at else '—' }}</p>
+            </div>
+            <span class="badge badge-pending"><i class="fas fa-clock"></i> Pending</span>
+        </div>
+        <div class="receipt-layout">
+            <div class="receipt-preview">
+                {% if cart.receipt_file and cart.receipt_file.lower().endswith('.pdf') %}
+                <a class="receipt-placeholder" href="{{ cart.receipt_file }}" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i><span>Open PDF receipt</span></a>
+                {% elif cart.receipt_file %}
+                <a href="{{ cart.receipt_file }}" target="_blank" rel="noopener"><img src="{{ cart.receipt_file }}" alt="Purchase receipt" class="receipt-image"></a>
+                {% else %}
+                <div class="receipt-placeholder"><i class="fas fa-image"></i><span>No receipt file</span></div>
+                {% endif %}
+            </div>
+            <div>
+                <div class="info-list">
+                    <div class="info-row"><span>Items</span><strong>{{ cart.line_items|length }}</strong></div>
+                    <div class="info-row"><span>Item total</span><strong>{{ cart.total|money }}</strong></div>
+                    <div class="info-row"><span>Traveler fee</span><strong>{{ cart.traveler_fee|money }}</strong></div>
+                    <div class="info-row"><span>Receipt store</span><strong>{{ cart.receipt_store or cart.store_name }}</strong></div>
+                    <div class="info-row"><span>Purchase date</span><strong>{{ cart.receipt_date|day if cart.receipt_date else '—' }}</strong></div>
+                    <div class="info-row"><span>Buyer</span><strong>{{ cart.buyer_name }}</strong></div>
+                    <div class="info-row"><span>Traveler</span><strong>{{ cart.traveler_name or '—' }}</strong></div>
+                    {% if cart.receipt_flag %}
+                    <div class="info-row"><span>Checks</span><strong class="text-warning"><i class="fas fa-triangle-exclamation"></i> {{ cart.receipt_flag }}</strong></div>
+                    {% endif %}
+                </div>
+                <div class="cart-actions" style="margin-top:14px">
+                    {% if cart.receipt_file %}<a class="btn btn-outline" href="{{ cart.receipt_file }}" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square"></i> Open full receipt</a>{% endif %}
+                    <a class="btn btn-ghost" href="{{ url_for('main.cart_detail', cart_id=cart.id) }}">Cart details</a>
+                </div>
+            </div>
+        </div>
+        <div class="admin-review-actions">
+            <form method="post" action="{{ url_for('main.admin_receipt_verify', cart_id=cart.id) }}" class="inline-form">
+                {{ csrf_field() }}
+                <button class="btn btn-success" type="submit"><i class="fas fa-check"></i> Verify &amp; notify buyer</button>
+            </form>
+            <form method="post" action="{{ url_for('main.admin_receipt_reject', cart_id=cart.id) }}" class="inline-form admin-reject-form">
+                {{ csrf_field() }}
+                <input type="text" name="reason" class="form-control" placeholder="Reason the receipt is rejected" required>
+                <button class="btn btn-outline danger-text" type="submit"><i class="fas fa-xmark"></i> Reject receipt</button>
+            </form>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+{{ empty('fa-receipt', 'No receipts waiting', 'When a traveler uploads a purchase receipt, it appears here for verification.') }}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty %}
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-bell"></i> Inbox</span>
+        <h1>Notifications</h1>
+        <p>{{ notifications|selectattr('read', 'equalto', 0)|list|length }} unread update{{ '' if notifications|selectattr('read', 'equalto', 0)|list|length == 1 else 's' }}.</p>
+    </div>
+    <div class="page-head-actions">
+        <form method="post" action="{{ url_for('main.notifications_read') }}">
+            {{ csrf_field() }}
+            <button class="btn btn-outline" type="submit"><i class="fas fa-check-double"></i> Mark all read</button>
+        </form>
+    </div>
+</div>
+
+<section class="panel">
+    {% if notifications %}
+    <div class="activity-list">
+        {% for item in notifications %}
+        <div class="activity-item" style="{% if not item.read %}background:var(--info-soft);margin:0 -10px;padding:14px 10px;border-radius:10px{% endif %}">
+            <div class="activity-icon" style="{% if not item.read %}background:#fff{% endif %}">
+                <i class="fas {% if 'message' in item.title|lower %}fa-comment{% elif 'order' in item.title|lower %}fa-box{% elif 'payout' in item.title|lower or 'withdraw' in item.title|lower %}fa-wallet{% else %}fa-bell{% endif %}"></i>
+            </div>
+            <div class="activity-details" style="flex:1">
+                <h5>{{ item.title }}{% if not item.read %} <span class="badge badge-pending" style="margin-left:4px">New</span>{% endif %}</h5>
+                <p>{{ item.body }}</p>
+                <p style="color:var(--muted-light)">{{ item.created_at|when }}</p>
+            </div>
+            <form method="post" action="{{ url_for('main.notification_read', notification_id=item.id) }}">
+                {{ csrf_field() }}
+                <button class="btn btn-outline btn-small" type="submit" style="flex:0 0 auto">
+                    <i class="fas fa-arrow-right"></i> Open
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    {{ empty('fa-bell-slash', 'All caught up', 'Delivery updates and order activity will appear here.') }}
+    {% endif %}
+</section>
+{% endblock %}

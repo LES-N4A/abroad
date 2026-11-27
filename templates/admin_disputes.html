@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty %}
+{% block title %}Disputes{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow gold"><i class="fas fa-scale-balanced"></i> Resolution desk</span>
+        <h1>Buyer disputes</h1>
+        <p>Review every issue raised by a buyer before escrow is released.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.admin_support') }}"><i class="fas fa-headset"></i> Support desk</a>
+        <a class="btn btn-outline" href="{{ url_for('main.admin_dashboard') }}"><i class="fas fa-gauge-high"></i> Overview</a>
+    </div>
+</div>
+
+{% if disputes %}
+<div class="panel">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Cart</th><th>Buyer</th><th>Traveler</th><th>Reason</th><th>Opened</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+                {% for dispute in disputes %}
+                <tr>
+                    <td><a class="text-link" href="{{ url_for('main.cart_detail', cart_id=dispute.cart_id) }}">#{{ dispute.cart_id }} · {{ dispute.store_name }}</a></td>
+                    <td>{{ dispute.buyer_name }}</td>
+                    <td>{{ dispute.traveler_name or '—' }}</td>
+                    <td>{{ dispute.reason }}</td>
+                    <td>{{ dispute.created_at|when }}</td>
+                    <td><span class="badge badge-{{ 'open' if dispute.status == 'open' else 'verified' }}">{{ dispute.status|title }}</span></td>
+                    <td>
+                        {% if dispute.status == 'open' %}
+                        <form method="post" action="{{ url_for('main.admin_dispute_resolve', dispute_id=dispute.id) }}" class="inline-form">
+                            {{ csrf_field() }}
+                            <button class="btn btn-success btn-small" type="submit"><i class="fas fa-check"></i> Mark resolved</button>
+                        </form>
+                        {% else %}<span class="small muted">Closed</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+{{ empty('fa-scale-balanced', 'No disputes', 'There are no buyer disputes to review.') }}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty, product_image %}
+{% block title %}Products{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-shirt"></i> Catalogue</span>
+        <h1>Your products</h1>
+        <p>{{ products|length }} product{{ '' if products|length == 1 else 's' }} · prices in Tunisian dinars.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.products_bulk') }}"><i class="fas fa-file-csv"></i> Bulk upload</a>
+        <a class="btn btn-outline" href="{{ url_for('main.products_page', view='inventory') if not inventory else url_for('main.products_page') }}">
+            <i class="fas fa-boxes"></i> {{ 'Catalogue view' if inventory else 'Inventory view' }}
+        </a>
+        <button class="btn btn-primary" type="button" data-open-modal="addProductModal"><i class="fas fa-plus"></i> Add product</button>
+    </div>
+</div>
+
+{% if inventory %}
+<section class="panel">
+    <div class="panel-head">
+        <div><h2><i class="fas fa-boxes"></i> Inventory</h2><p>Update stock counts without leaving the table.</p></div>
+    </div>
+    {% if products %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Weight</th><th>Stock</th><th>Status</th><th>Update</th></tr></thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td>
+                        <div class="table-product">
+                            {{ product_image(product, 'table-thumb') }}
+                            <div><strong>{{ product.name }}</strong><div class="small muted">{{ product.sold }} sold</div></div>
+                        </div>
+                    </td>
+                    <td>{{ product.category }}</td>
+                    <td>{{ product.price|money }}</td>
+                    <td>{{ product.weight_kg }} kg</td>
+                    <td>{{ product.stock }}</td>
+                    <td><span class="stock-tag {% if product.stock == 0 %}stock-out{% elif product.stock <= 5 %}stock-low{% else %}stock-in{% endif %}">
+                        {{ 'Out of stock' if product.stock == 0 else ('Low stock' if product.stock <= 5 else 'In stock') }}
+                    </span></td>
+                    <td>
+                        <form method="post" action="{{ url_for('main.product_stock', product_id=product.id) }}" class="inline-form">
+                            {{ csrf_field() }}
+                            <input type="number" name="stock" min="0" step="1" value="{{ product.stock }}" class="form-control" style="width:80px;padding:8px 10px" aria-label="Stock for {{ product.name }}">
+                            <button class="btn btn-outline btn-small" type="submit" style="flex:0 0 auto">Save</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ empty('fa-boxes', 'No products to track', 'Add a product first, then manage its stock here.') }}
+    {% endif %}
+</section>
+
+{% else %}
+{% if products %}
+<div class="products-grid" style="grid-template-columns:repeat(auto-fill,minmax(235px,1fr))">
+    {% for product in products %}
+    <article class="product-card">
+        <a class="product-image-container" href="{{ url_for('main.product_detail', product_id=product.id) }}" aria-label="Open {{ product.name }}">
+            {% if product.featured %}<span class="product-badge"><i class="fas fa-bolt"></i> Featured</span>{% endif %}
+            {{ product_image(product, 'product-image') }}
+            {% if product.video_url %}<span class="media-badge"><i class="fas fa-play"></i> Video</span>{% endif %}
+        </a>
+        <div class="product-details">
+            <div class="product-meta-row">
+                <span>{{ product.category }}</span>
+                <span class="stock-tag {% if product.stock == 0 %}stock-out{% elif product.stock <= 5 %}stock-low{% else %}stock-in{% endif %}">
+                    {{ 'Out of stock' if product.stock == 0 else product.stock ~ ' left' }}
+                </span>
+            </div>
+            <div class="product-title"><a class="text-link" href="{{ url_for('main.product_detail', product_id=product.id) }}">{{ product.name }}</a></div>
+            <div class="product-price" style="margin-top:4px">{{ product.price|money }}</div>
+            <div class="product-stats"><span>{{ product.sold }} sold</span><span>{{ product.weight_kg }} kg</span></div>
+        </div>
+        <div class="product-actions">
+            <a class="btn btn-outline btn-small" href="{{ url_for('main.product_detail', product_id=product.id) }}"><i class="fas fa-eye"></i> View</a>
+            <a class="btn btn-outline btn-small" href="{{ url_for('main.products_page', edit=product.id) }}"><i class="fas fa-pen"></i> Edit</a>
+            <form method="post" action="{{ url_for('main.product_delete', product_id=product.id) }}" class="inline-form" data-confirm="Delete {{ product.name }}? This cannot be undone.">
+                {{ csrf_field() }}
+                <button class="btn btn-ghost btn-small danger-text" type="submit" aria-label="Delete {{ product.name }}"><i class="fas fa-trash"></i></button>
+            </form>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+{{ empty('fa-shirt', 'No products yet', 'Add your first product with a photo, price and weight.') }}
+{% endif %}
+{% endif %}
+
+<div class="modal" id="addProductModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Add new product</h3>
+            <button class="close-modal" type="button" data-close-modal aria-label="Close">&times;</button>
+        </div>
+        <form method="post" action="{{ url_for('main.product_add') }}" enctype="multipart/form-data">
+            {{ csrf_field() }}
+            {% set product = None %}
+            {% include "partials/product_form.html" %}
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit"><i class="fas fa-plus"></i> Save product</button>
+                <button class="btn btn-outline" type="button" data-close-modal>Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if edit_product %}
+<div class="modal show" id="editProductModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Edit product</h3>
+            <a class="close-modal" href="{{ url_for('main.products_page') }}" aria-label="Close">&times;</a>
+        </div>
+        <form method="post" action="{{ url_for('main.product_edit', product_id=edit_product.id) }}" enctype="multipart/form-data">
+            {{ csrf_field() }}
+            {% set product = edit_product %}
+            {% include "partials/product_form.html" %}
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit"><i class="fas fa-check"></i> Save changes</button>
+                <a class="btn btn-outline" href="{{ url_for('main.products_page') }}">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

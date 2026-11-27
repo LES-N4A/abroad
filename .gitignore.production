@@ -1,0 +1,110 @@
+# .gitignore - Updated for production
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Flask
+instance/
+.webassets-cache
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Uploads
+uploads/
+instance/uploads/
+
+# Backups
+backups/
+*.sql.gz
+*.sqlite.gz
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Redis dump
+dump.rdb
+
+# Certificates
+*.pem
+*.key
+*.crt
+ssl/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Cloud attachments (existing)
+.cloud-attachments/
+.freebuff/
+.pytest_tmp/
+pytest-of-*/
+smoke-*/
+tmp*/
+
+# Release archives
+*.tar.gz
+*.zip
+abroad-release.*
+
+# Backup files
+*.bak

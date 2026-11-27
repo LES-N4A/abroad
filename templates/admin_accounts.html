@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty, avatar %}
+{% block title %}All accounts{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow gold"><i class="fas fa-users"></i> Account control</span>
+        <h1>All marketplace accounts</h1>
+        <p>Approve new members, suspend accounts and monitor every role.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.admin_dashboard') }}"><i class="fas fa-gauge-high"></i> Overview</a>
+    </div>
+</div>
+
+<div class="tabs" style="margin-bottom:18px">
+    <a class="tab {% if status == 'all' %}active{% endif %}" href="{{ url_for('main.admin_accounts') }}">All</a>
+    <a class="tab {% if status == 'pending' %}active{% endif %}" href="{{ url_for('main.admin_accounts', status='pending') }}">Pending</a>
+    <a class="tab {% if status == 'active' %}active{% endif %}" href="{{ url_for('main.admin_accounts', status='active') }}">Active</a>
+    <a class="tab {% if status == 'suspended' %}active{% endif %}" href="{{ url_for('main.admin_accounts', status='suspended') }}">Suspended</a>
+</div>
+
+{% if users %}
+<div class="panel">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Account</th><th>Role</th><th>City</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:10px">
+                            {{ avatar(user.name) }}
+                            <div><strong>{{ user.name }}</strong><br><span class="small muted">{{ user.email }}</span></div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if user.is_admin %}<span class="badge badge-verified"><i class="fas fa-shield-halved"></i> Owner</span>
+                        {% else %}{{ user.role|title }}{% endif %}
+                    </td>
+                    <td>{{ user.city }}</td>
+                    <td><span class="badge badge-{{ 'verified' if user.status == 'active' else 'pending' if user.status == 'pending' else 'rejected' }}">{{ user.status|title }}</span></td>
+                    <td>{{ user.created_at|when }}</td>
+                    <td>
+                        {% if not user.is_admin %}
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            {% if user.status != 'active' %}
+                            <form method="post" action="{{ url_for('main.admin_account_status', user_id=user.id) }}" class="inline-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="status" value="active">
+                                <button class="btn btn-success btn-small" type="submit"><i class="fas fa-check"></i> Approve</button>
+                            </form>
+                            {% endif %}
+                            {% if user.status != 'suspended' %}
+                            <form method="post" action="{{ url_for('main.admin_account_status', user_id=user.id) }}" class="inline-form" onsubmit="return confirm('Suspend {{ user.name }}?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="status" value="suspended">
+                                <button class="btn btn-outline btn-small danger-text" type="submit"><i class="fas fa-ban"></i> Suspend</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <span class="small muted">Protected account</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+{{ empty('fa-users', 'No accounts in this filter', 'Try another status tab.') }}
+{% endif %}
+{% endblock %}

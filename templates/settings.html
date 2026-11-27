@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-user-gear"></i> Account</span>
+        <h1>Profile &amp; settings</h1>
+        <p>Update how buyers and travelers see you across Abroad.</p>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div>
+        <section class="panel" style="margin-bottom:20px">
+            <div class="panel-head"><div><h2><i class="fas fa-id-card"></i> Profile</h2><p>Public account information.</p></div></div>
+            <form method="post" action="{{ url_for('main.settings_profile') }}">
+                {{ csrf_field() }}
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="name">Full name</label>
+                        <input type="text" id="name" name="name" class="form-control" value="{{ current_user.name }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" class="form-control" value="{{ current_user.email }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="city">City</label>
+                        <input type="text" id="city" name="city" class="form-control" value="{{ current_user.city }}">
+                    </div>
+                    {% if current_user.role in ('seller', 'pro') %}
+                    <div class="form-group">
+                        <label for="store-name">Store name</label>
+                        <input type="text" id="store-name" name="store_name" class="form-control" value="{{ current_user.store_name or '' }}">
+                    </div>
+                    <div class="form-group full">
+                        <label for="shipping-notes">Shipping &amp; returns notes</label>
+                        <textarea id="shipping-notes" name="shipping_notes" class="form-control" rows="3" placeholder="Delivery windows, return policy…">{{ current_user.shipping_notes or '' }}</textarea>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="form-actions" style="justify-content:flex-start">
+                    <button class="btn btn-primary" type="submit"><i class="fas fa-check"></i> Save profile</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="panel">
+            <div class="panel-head"><div><h2><i class="fas fa-lock"></i> Password</h2><p>Use at least 6 characters.</p></div></div>
+            <form method="post" action="{{ url_for('main.settings_password') }}">
+                {{ csrf_field() }}
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="current-password">Current password</label>
+                        <input type="password" id="current-password" name="current_password" class="form-control" autocomplete="current-password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-password">New password</label>
+                        <input type="password" id="new-password" name="new_password" class="form-control" minlength="6" autocomplete="new-password" required>
+                    </div>
+                </div>
+                <div class="form-actions" style="justify-content:flex-start">
+                    <button class="btn btn-primary" type="submit"><i class="fas fa-key"></i> Update password</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <div class="rating-display">
+                <div class="user-avatar" style="margin:0 auto 12px;width:60px;height:60px;font-size:22px">{{ current_user.name|initials }}</div>
+                <h3 style="font-size:16px;margin-bottom:2px">{{ current_user.store_name or current_user.name }}</h3>
+                <div class="rating-count">{{ ROLE_LABEL[current_user.role] }} · {{ current_user.city }}</div>
+            </div>
+            <div class="info-list" style="margin-top:16px">
+                <div class="info-row"><span>Email</span><strong>{{ current_user.email }}</strong></div>
+                <div class="info-row"><span>Member since</span><strong>{{ current_user.created_at|day }}</strong></div>
+                <div class="info-row"><span>Rating</span><strong>{{ '%.1f'|format(current_user.rating or 0) }} / 5</strong></div>
+                {% if current_user.role == 'traveler' %}
+                <div class="info-row"><span>Deliveries</span><strong>{{ current_user.deliveries }}</strong></div>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">Account links</h2>
+            <div class="quick-actions">
+                <a class="btn btn-outline" href="{{ url_for('main.support') }}"><i class="fas fa-headset"></i> Support</a>
+                <a class="btn btn-outline" href="{{ url_for('main.reviews') }}"><i class="fas fa-star"></i> Reviews</a>
+                {% if current_user.role in ('seller', 'pro') %}
+                <a class="btn btn-outline" href="{{ url_for('main.api_page') }}"><i class="fas fa-code"></i> API access</a>
+                {% endif %}
+                <form method="post" action="{{ url_for('auth.logout') }}">
+                    {{ csrf_field() }}
+                    <button class="btn btn-outline danger-text" type="submit" style="width:100%"><i class="fas fa-arrow-right-from-bracket"></i> Log out</button>
+                </form>
+            </div>
+        </section>
+    </aside>
+</div>
+{% endblock %}

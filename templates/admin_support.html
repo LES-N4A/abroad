@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty %}
+{% block title %}Support desk{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow gold"><i class="fas fa-headset"></i> Support desk</span>
+        <h1>Support tickets</h1>
+        <p>Messages sent by accounts across the marketplace.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.admin_disputes') }}"><i class="fas fa-scale-balanced"></i> Disputes</a>
+        <a class="btn btn-outline" href="{{ url_for('main.admin_dashboard') }}"><i class="fas fa-gauge-high"></i> Overview</a>
+    </div>
+</div>
+
+{% if tickets %}
+<div class="admin-card-list">
+    {% for ticket in tickets %}
+    <article class="panel admin-review-card">
+        <div class="panel-head">
+            <div>
+                <span class="eyebrow"><i class="fas fa-user"></i> {{ ticket.user_name }} · {{ ticket.email }}</span>
+                <h2>{{ ticket.subject }}</h2>
+                <p>{{ ticket.created_at|when }}</p>
+            </div>
+            <span class="badge badge-{{ 'pending' if ticket.status == 'open' else 'verified' }}">{{ ticket.status|title }}</span>
+        </div>
+        <p style="white-space:pre-line;color:var(--muted);margin-bottom:14px">{{ ticket.body }}</p>
+        {% if ticket.status == 'open' %}
+        <form method="post" action="{{ url_for('main.admin_support_resolve', ticket_id=ticket.id) }}" class="inline-form">
+            {{ csrf_field() }}
+            <button class="btn btn-success" type="submit"><i class="fas fa-check"></i> Mark resolved</button>
+        </form>
+        {% else %}
+        <span class="small muted"><i class="fas fa-circle-check" style="color:var(--success)"></i> Closed</span>
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+{{ empty('fa-headset', 'No support tickets', 'Support requests will appear here.') }}
+{% endif %}
+{% endblock %}

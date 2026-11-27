@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty, avatar %}
+{% block title %}Reviews{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-star"></i> Reputation</span>
+        <h1>Reviews</h1>
+        <p>{% if current_user.role in ('seller', 'pro') %}What buyers say about your store.{% else %}Your reviews and orders waiting for feedback.{% endif %}</p>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div>
+        {% if current_user.role == 'buyer' and order_options %}
+        <section class="panel" style="margin-bottom:20px">
+            <div class="panel-head"><div><h2><i class="fas fa-pen"></i> Leave a review</h2><p>Only delivered orders can be reviewed.</p></div></div>
+            <form method="post" action="{{ url_for('main.review_add') }}">
+                {{ csrf_field() }}
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="order">Delivered order</label>
+                        <select id="order" name="order_id" class="form-control" required>
+                            <option value="">Choose an order…</option>
+                            {% for order in order_options %}
+                            <option value="{{ order.id }}">#{{ order.id }} · {{ order.product_name }} · {{ order.seller_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rating">Rating</label>
+                        <select id="rating" name="rating" class="form-control" required>
+                            <option value="5">5 — Excellent</option>
+                            <option value="4">4 — Very good</option>
+                            <option value="3">3 — Okay</option>
+                            <option value="2">2 — Poor</option>
+                            <option value="1">1 — Bad</option>
+                        </select>
+                    </div>
+                    <div class="form-group full">
+                        <label for="comment">Comment</label>
+                        <textarea id="comment" name="comment" class="form-control" rows="3" placeholder="How was the item and the delivery?"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions" style="justify-content:flex-start">
+                    <button class="btn btn-primary" type="submit"><i class="fas fa-star"></i> Publish review</button>
+                </div>
+            </form>
+        </section>
+        {% endif %}
+
+        <section class="panel">
+            <div class="panel-head">
+                <div><h2><i class="fas fa-comments"></i> {{ 'Received reviews' if current_user.role in ('seller', 'pro') else 'Your reviews' }}</h2><p>Newest first.</p></div>
+                <span class="badge badge-verified">{{ reviews|length }} total</span>
+            </div>
+            {% if reviews %}
+            <div class="activity-list">
+                {% for review in reviews %}
+                <div class="activity-item">
+                    {{ avatar(review.buyer_name if current_user.role in ('seller', 'pro') else review.seller_name) }}
+                    <div class="activity-details" style="flex:1">
+                        <h5>
+                            {{ review.buyer_name if current_user.role in ('seller', 'pro') else review.seller_name }}
+                            <span style="color:var(--gold-500);margin-left:4px">
+                                {% for i in range(1, 6) %}<i class="fas fa-star{% if i > review.rating %} fa-regular{% endif %}" style="font-size:10px"></i>{% endfor %}
+                            </span>
+                        </h5>
+                        <p>{{ review.comment or 'No comment left.' }}</p>
+                        <p style="color:var(--muted-light)">{{ review.created_at|when }}{% if review.order_id %} · order #{{ review.order_id }}{% endif %}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            {{ empty('fa-star', 'No reviews yet', 'Reviews appear after buyers release escrow on delivered orders.') }}
+            {% endif %}
+        </section>
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <div class="rating-display">
+                <div class="rating-stars">
+                    {% for i in range(1, 6) %}<i class="fas fa-star{% if i > (current_user.rating or 0)|round|int %}-o{% endif %}"></i>{% endfor %}
+                </div>
+                <div class="rating-value">{{ '%.1f'|format(current_user.rating or 0) }}</div>
+                <div class="rating-count">{{ reviews|length }} review{{ '' if reviews|length == 1 else 's' }}</div>
+            </div>
+        </section>
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">Review tips</h2>
+            <div class="activity-list">
+                <div class="activity-item"><div class="activity-icon"><i class="fas fa-camera"></i></div><div class="activity-details"><h5>Mention the condition</h5><p>Help other buyers know what to expect.</p></div></div>
+                <div class="activity-item"><div class="activity-icon"><i class="fas fa-truck"></i></div><div class="activity-details"><h5>Rate the handover</h5><p>Was the meeting point and timing good?</p></div></div>
+                <div class="activity-item"><div class="activity-icon"><i class="fas fa-shield"></i></div><div class="activity-details"><h5>Keep it honest</h5><p>Reviews cannot be edited after publishing.</p></div></div>
+            </div>
+        </section>
+    </aside>
+</div>
+{% endblock %}

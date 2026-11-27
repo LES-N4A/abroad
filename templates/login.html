@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in — Abroad</title>
+    <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='abroad.css') }}">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <aside class="auth-left">
+            <a class="logo" href="{{ url_for('auth.login') }}">
+                <span class="logo-mark"><img src="{{ url_for('static', filename='logo.png') }}" alt=""></span>
+                <span class="logo-text">Abroad<small>Tunisia marketplace</small></span>
+            </a>
+            <span class="eyebrow gold"><i class="fas fa-shield-halved"></i> Escrow protected</span>
+            <h1>Shop the world.<br><em>Delivered by travelers.</em></h1>
+            <p>Abroad connects buyers in Tunisia with travelers coming home. Every order is held in escrow until you confirm delivery.</p>
+            <ul class="benefits">
+                <li><i class="fas fa-check"></i> Money held safely until delivery</li>
+                <li><i class="fas fa-check"></i> Verified sellers and travelers</li>
+                <li><i class="fas fa-check"></i> Delivery confirmation codes</li>
+                <li><i class="fas fa-check"></i> Ratings on every completed trip</li>
+            </ul>
+            <div class="notice" style="margin-top:24px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">
+                <i class="fas fa-user-shield"></i>
+                <div>New accounts are reviewed by the administrator before sign-in.</div>
+            </div>
+        </aside>
+
+        <main class="auth-right">
+            {% with flashes = get_flashed_messages(with_categories=true) %}
+                {% for category, message in flashes %}
+                <div class="auth-alert {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endwith %}
+
+            <div class="auth-tabs" role="tablist">
+                <button class="auth-tab {% if active_tab != 'register' %}active{% endif %}" type="button" onclick="showLogin()">Sign in</button>
+                <button class="auth-tab {% if active_tab == 'register' %}active{% endif %}" type="button" onclick="showRegister()">Create account</button>
+            </div>
+
+            <section class="auth-form {% if active_tab != 'register' %}active{% endif %}" id="login-form">
+                <h2>Welcome back</h2>
+                <p>Sign in to track orders, manage your store or plan a trip.</p>
+
+                <form id="social-form" method="post" action="{{ url_for('auth.demo', role='buyer') }}" hidden>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="provider" id="social-provider">
+                </form>
+                <div class="social-login">
+                    <button class="social-btn" type="button" onclick="socialLogin('Google')">
+                        <i class="fab fa-google" style="color:#DB4437"></i> Google
+                    </button>
+                    <button class="social-btn" type="button" onclick="socialLogin('Facebook')">
+                        <i class="fab fa-facebook" style="color:#4267B2"></i> Facebook
+                    </button>
+                </div>
+                <p class="auth-hint">Social sign-in is not configured in this classroom build — it signs you into the demo buyer account.</p>
+
+                <div class="divider"><span>or continue with email</span></div>
+
+                <form id="loginForm" method="post" action="{{ url_for('auth.login') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-group">
+                        <label for="login-email">Email or phone number</label>
+                        <input type="text" id="login-email" name="email" class="form-control" placeholder="you@example.com" value="{{ email or '' }}" autocomplete="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <div class="password-field">
+                            <input type="password" id="login-password" name="password" class="form-control" placeholder="Enter your password" autocomplete="current-password" required>
+                            <button class="password-toggle" type="button" aria-label="Show password" onclick="togglePassword('login-password', this)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%">Sign in <i class="fas fa-arrow-right"></i></button>
+                </form>
+
+                <div class="demo-roles">
+                    <span>Demo</span>
+                    {% for role in ['buyer', 'seller', 'traveler', 'pro', 'admin'] %}
+                    {% if role != 'admin' or config['ALLOW_DEMO_ADMIN'] %}
+                    <form method="post" action="{{ url_for('auth.demo', role=role) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="demo-chip" type="submit">
+                            <i class="fas {{ {'buyer':'fa-bag-shopping','seller':'fa-store','traveler':'fa-plane','pro':'fa-certificate','admin':'fa-shield-halved'}[role] }}"></i>
+                            {{ 'Admin' if role == 'admin' else role|title }}
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+
+                <p style="margin:18px 0 0; text-align:center; font-size:13px; color:var(--muted)">
+                    New to Abroad? <a href="#" onclick="showRegister(); return false;" style="font-weight:700; text-decoration:none">Create an account</a>
+                </p>
+            </section>
+
+            <section class="auth-form {% if active_tab == 'register' %}active{% endif %}" id="register-form">
+                {% if verification %}
+                <div class="verification-section" style="display:block; margin-top:0">
+                    <div style="width:52px;height:52px;margin:0 auto 12px;display:grid;place-items:center;background:var(--success-soft);color:var(--success);border-radius:50%;font-size:20px">
+                        <i class="fas fa-shield-halved"></i>
+                    </div>
+                    <h3>Verify your account</h3>
+                    <p>We sent a 6-digit code to <strong>{{ pending_email }}</strong>.</p>
+                    <div class="demo-code"><h4><i class="fas fa-key"></i> Demo code: {{ demo_code }}</h4></div>
+                    <form method="post" action="{{ url_for('auth.verify_registration') }}" onsubmit="return joinCode()">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="code" id="verification-code">
+                        <div class="verification-inputs">
+                            <input type="text" class="verification-input" inputmode="numeric" maxlength="1" aria-label="Digit 1">
+                            <input type="text" class="verification-input" inputmode="numeric" maxlength="1" aria-label="Digit 2">
+                            <input type="text" class="verification-input" inputmode="numeric" maxlength="1" aria-label="Digit 3">
+                            <input type="text" class="verification-input" inputmode="numeric" maxlength="1" aria-label="Digit 4">
+                            <input type="text" class="verification-input" inputmode="numeric" maxlength="1" aria-label="Digit 5">
+                            <input type="text" class="verification-input" inputmode="numeric" maxlength="1" aria-label="Digit 6">
+                        </div>
+                        <button class="btn btn-primary" type="submit" style="width:100%">Verify and continue <i class="fas fa-arrow-right"></i></button>
+                    </form>
+                    <a href="{{ url_for('auth.login', tab='register') }}" class="back-link"><i class="fas fa-arrow-left"></i> Back to registration</a>
+                </div>
+                {% else %}
+                <h2>Create your account</h2>
+                <p>Choose how you want to use Abroad.</p>
+
+                <div class="role-selection" id="role-selection">
+                    {% for role, icon, title, text in [
+                        ('buyer', 'fa-bag-shopping', 'Buyer', 'Shop safely with escrow'),
+                        ('seller', 'fa-store', 'Local seller', 'Sell your products'),
+                        ('traveler', 'fa-plane', 'Traveler', 'Carry carts, earn fees'),
+                        ('pro', 'fa-certificate', 'Pro seller', 'Established business')
+                    ] %}
+                    <div class="role-option role-{{ role }}" onclick="selectRole('{{ role }}')" role="button" tabindex="0">
+                        <div class="role-icon"><i class="fas {{ icon }}"></i></div>
+                        <h4>{{ title }}</h4>
+                        <p>{{ text }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% for role, title, name_label, placeholder in [
+                    ('buyer', 'Buyer details', 'Full name', 'Sarra Ben Ali'),
+                    ('seller', 'Store details', 'Store name', 'Fashion Store'),
+                    ('traveler', 'Traveler details', 'Passport name', 'As printed on your passport'),
+                    ('pro', 'Business details', 'Company name', 'Fashion Brand Inc.')
+                ] %}
+                <form id="{{ role }}-register-form" class="role-form" method="post" action="{{ url_for('auth.register') }}" style="display:none">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="role" value="{{ role }}">
+                    <h3>{{ title }}</h3>
+                    <div class="form-group">
+                        <label for="{{ role }}-name">{{ name_label }}</label>
+                        <input type="text" id="{{ role }}-name" name="name" class="form-control" placeholder="{{ placeholder }}" required>
+                    </div>
+                    {% if role == 'traveler' %}
+                    <div class="form-group">
+                        <label for="traveler-country">Current country</label>
+                        <input type="text" id="traveler-country" name="country" class="form-control" value="France" required>
+                    </div>
+                    {% else %}
+                    <input type="hidden" name="country" value="Tunisia">
+                    {% endif %}
+                    <div class="form-group">
+                        <label for="{{ role }}-email">Email</label>
+                        <input type="email" id="{{ role }}-email" name="email" class="form-control" placeholder="you@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ role }}-password">Password</label>
+                        <input type="password" id="{{ role }}-password" name="password" class="form-control" placeholder="At least 6 characters" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%">Continue</button>
+                    <a href="#" class="back-link" onclick="showRoleSelection(); return false;"><i class="fas fa-arrow-left"></i> Back to roles</a>
+                </form>
+                {% endfor %}
+                {% endif %}
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const selectedRole = {{ (selected_role or '')|tojson }};
+
+        function showLogin() {
+            document.getElementById('login-form').classList.add('active');
+            document.getElementById('register-form').classList.remove('active');
+            document.querySelectorAll('.auth-tab')[0].classList.add('active');
+            document.querySelectorAll('.auth-tab')[1].classList.remove('active');
+        }
+
+        function showRegister() {
+            document.getElementById('login-form').classList.remove('active');
+            document.getElementById('register-form').classList.add('active');
+            document.querySelectorAll('.auth-tab')[0].classList.remove('active');
+            document.querySelectorAll('.auth-tab')[1].classList.add('active');
+        }
+
+        function selectRole(role) {
+            const selection = document.getElementById('role-selection');
+            if (!selection) return;
+            selection.style.display = 'none';
+            document.querySelectorAll('.role-form').forEach(form => { form.style.display = 'none'; });
+            const form = document.getElementById(role + '-register-form');
+            if (form) form.style.display = 'block';
+        }
+
+        function showRoleSelection() {
+            const selection = document.getElementById('role-selection');
+            if (!selection) return;
+            selection.style.display = 'grid';
+            document.querySelectorAll('.role-form').forEach(form => { form.style.display = 'none'; });
+        }
+
+        function socialLogin(provider) {
+            document.getElementById('social-provider').value = provider;
+            document.getElementById('social-form').submit();
+        }
+
+        function togglePassword(id, button) {
+            const input = document.getElementById(id);
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            button.innerHTML = show ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+        }
+
+        function joinCode() {
+            const values = [...document.querySelectorAll('.verification-input')].map(input => input.value).join('');
+            if (values.length !== 6) {
+                alert('Enter all six digits.');
+                return false;
+            }
+            document.getElementById('verification-code').value = values;
+            return true;
+        }
+
+        const codeInputs = document.querySelectorAll('.verification-input');
+        codeInputs.forEach((input, index) => {
+            input.addEventListener('input', () => {
+                input.value = input.value.replace(/\D/g, '').slice(0, 1);
+                if (input.value && codeInputs[index + 1]) codeInputs[index + 1].focus();
+            });
+            input.addEventListener('keydown', event => {
+                if (event.key === 'Backspace' && !input.value && index > 0) codeInputs[index - 1].focus();
+            });
+            input.addEventListener('paste', event => {
+                const digits = (event.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+                if (!digits) return;
+                event.preventDefault();
+                codeInputs.forEach((box, i) => { box.value = digits[i] || ''; });
+            });
+        });
+
+        if (selectedRole) selectRole(selectedRole);
+    </script>
+</body>
+</html>

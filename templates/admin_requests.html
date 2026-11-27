@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status, cart_status, empty %}
+{% block title %}All requests{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow gold"><i class="fas fa-shield-halved"></i> Marketplace monitor</span>
+        <h1>Every escrow request</h1>
+        <p>Local shop carts and custom online-store requests across all accounts.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.admin_receipts') }}"><i class="fas fa-receipt"></i> Receipts</a>
+        <a class="btn btn-outline" href="{{ url_for('main.admin_dashboard') }}"><i class="fas fa-gauge-high"></i> Overview</a>
+    </div>
+</div>
+
+{% if requests %}
+<div class="panel">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Cart</th><th>Buyer</th><th>Traveler</th><th>Type</th><th>Items</th><th>Fee</th><th>Payment</th><th>Receipt</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                {% for cart in requests %}
+                <tr>
+                    <td>#{{ cart.id }}<br><span class="small muted">{{ cart.store_name }}</span></td>
+                    <td>{{ cart.buyer_name }}</td>
+                    <td>{{ cart.traveler_name or '—' }}</td>
+                    <td>{{ 'Custom store' if cart.is_custom else 'Shop' }}</td>
+                    <td>{{ cart.total|money }}<br><span class="small muted">{{ '%.1f'|format(cart.weight) }} kg</span></td>
+                    <td>{{ cart.traveler_fee|money }}</td>
+                    <td>{{ 'Funded' if cart.paid else 'Unpaid' }}</td>
+                    <td>{{ cart.receipt_status|title }}</td>
+                    <td>{{ cart_status(cart) }}</td>
+                    <td><a class="btn btn-outline btn-small" href="{{ url_for('main.cart_detail', cart_id=cart.id) }}">Open</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+{{ empty('fa-shield-halved', 'No escrow requests yet', 'Buyer requests will appear here from the moment they are created.') }}
+{% endif %}
+{% endblock %}

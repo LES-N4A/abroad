@@ -1,0 +1,123 @@
+{% from "_macros.html" import csrf_field %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Abroad{% endblock %} — Abroad</title>
+    <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='abroad.css') }}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    <header class="app-header">
+        <div class="header-content">
+            <a class="logo" href="{{ role_home }}" aria-label="Abroad home">
+                <span class="logo-mark"><img src="{{ url_for('static', filename='logo.png') }}" alt=""></span>
+                <span class="logo-text">Abroad<small>Tunisia marketplace</small></span>
+            </a>
+
+            <nav class="nav-center" aria-label="Primary">
+                {% for endpoint, label, icon in nav_items %}
+                <a href="{{ url_for(endpoint) }}" class="nav-link {% if active_endpoint == endpoint %}active{% endif %}">
+                    <i class="fas {{ icon }}"></i> {{ label }}
+                </a>
+                {% endfor %}
+            </nav>
+
+            <div class="header-right">
+                <a class="header-icon" href="{{ url_for('main.notifications') }}" aria-label="Notifications">
+                    <i class="fas fa-bell"></i>
+                    {% if unread_notifications %}<span class="notification-badge">{{ unread_notifications }}</span>{% endif %}
+                </a>
+                <a class="header-icon" href="{{ url_for('main.messages') }}" aria-label="Messages">
+                    <i class="fas fa-envelope"></i>
+                    {% if unread_messages %}<span class="notification-badge">{{ unread_messages }}</span>{% endif %}
+                </a>
+                <div class="user-info" data-user-menu-toggle role="button" tabindex="0" aria-label="Account menu">
+                    <span class="user-avatar">{{ current_user.name|initials }}</span>
+                    <span class="user-info-text">
+                        <span class="user-name">{{ current_user.store_name or current_user.name }}</span>
+                        <span class="user-sub">{{ role_label }}</span>
+                    </span>
+                </div>
+                <button class="mobile-toggle" type="button" aria-label="Toggle menu" aria-expanded="false" data-nav-toggle>
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+
+        <nav class="mobile-nav" data-mobile-nav aria-label="Mobile">
+            {% for endpoint, label, icon in nav_items %}
+            <a href="{{ url_for(endpoint) }}" class="nav-link {% if active_endpoint == endpoint %}active{% endif %}">
+                <i class="fas {{ icon }}"></i> {{ label }}
+            </a>
+            {% endfor %}
+        </nav>
+
+        <div class="user-menu" data-user-menu>
+            <a class="user-menu-item" href="{{ url_for('main.settings') }}"><i class="fas fa-user-gear"></i> Profile &amp; settings</a>
+            {% if is_admin %}
+            <a class="user-menu-item" href="{{ url_for('main.admin_accounts') }}"><i class="fas fa-users"></i> All accounts</a>
+            <a class="user-menu-item" href="{{ url_for('main.admin_trips') }}"><i class="fas fa-plane-departure"></i> Trip verification</a>
+            <a class="user-menu-item" href="{{ url_for('main.admin_receipts') }}"><i class="fas fa-receipt"></i> Receipt verification</a>
+            <a class="user-menu-item" href="{{ url_for('main.admin_requests') }}"><i class="fas fa-box"></i> All requests</a>
+            <a class="user-menu-item" href="{{ url_for('main.admin_disputes') }}"><i class="fas fa-scale-balanced"></i> Disputes</a>
+            <a class="user-menu-item" href="{{ url_for('main.admin_support') }}"><i class="fas fa-headset"></i> Support desk</a>
+            <a class="user-menu-item" href="{{ url_for('main.admin_staff') }}"><i class="fas fa-users-gear"></i> Staff</a>
+            {% elif current_user.is_staff %}
+            <a class="user-menu-item" href="{{ url_for('main.staff_dashboard') }}"><i class="fas fa-check-double"></i> Verification</a>
+            <a class="user-menu-item" href="{{ url_for('main.staff_receipts') }}"><i class="fas fa-receipt"></i> Receipts</a>
+            {% elif current_user.role == 'buyer' %}
+            <a class="user-menu-item" href="{{ url_for('main.local_market') }}"><i class="fas fa-location-dot"></i> Local marketplace</a>
+            <a class="user-menu-item" href="{{ url_for('main.travelers_page') }}"><i class="fas fa-plane"></i> Available travelers</a>
+            <a class="user-menu-item" href="{{ url_for('main.wallet') }}"><i class="fas fa-wallet"></i> Wallet &amp; refunds</a>
+            <a class="user-menu-item" href="{{ url_for('main.orders') }}"><i class="fas fa-box"></i> My orders</a>
+            <a class="user-menu-item" href="{{ url_for('main.escrow') }}"><i class="fas fa-shield-halved"></i> Escrow</a>
+            {% elif current_user.role in ('seller', 'pro') %}
+            <a class="user-menu-item" href="{{ url_for('main.sourcing') }}"><i class="fas fa-cart-shopping"></i> My sourcing requests</a>
+            <a class="user-menu-item" href="{{ url_for('main.local_market') }}"><i class="fas fa-location-dot"></i> Local marketplace</a>
+            <a class="user-menu-item" href="{{ url_for('main.wallet') }}"><i class="fas fa-wallet"></i> Wallet</a>
+            <a class="user-menu-item" href="{{ url_for('main.promotions') }}"><i class="fas fa-bullhorn"></i> Promotions</a>
+            <a class="user-menu-item" href="{{ url_for('main.team') }}"><i class="fas fa-users"></i> Team</a>
+            <a class="user-menu-item" href="{{ url_for('main.api_page') }}"><i class="fas fa-code"></i> API access</a>
+            {% else %}
+            <a class="user-menu-item" href="{{ url_for('main.trips') }}"><i class="fas fa-plane"></i> My trips</a>
+            <a class="user-menu-item" href="{{ url_for('main.wallet') }}"><i class="fas fa-money-bill-wave"></i> Earnings</a>
+            {% endif %}
+            {% if not is_admin %}
+            <a class="user-menu-item" href="{{ url_for('main.reviews') }}"><i class="fas fa-star"></i> Reviews</a>
+            <a class="user-menu-item" href="{{ url_for('main.disputes') }}"><i class="fas fa-triangle-exclamation"></i> Disputes</a>
+            <a class="user-menu-item" href="{{ url_for('main.support') }}"><i class="fas fa-headset"></i> Support</a>
+            {% endif %}
+            <form method="post" action="{{ url_for('auth.logout') }}">
+                {{ csrf_field() }}
+                <button type="submit" class="user-menu-item logout-item"><i class="fas fa-arrow-right-from-bracket"></i> Log out</button>
+            </form>
+        </div>
+    </header>
+
+    <main class="dashboard-container">
+        {% block content %}{% endblock %}
+        <footer>
+            <p>© 2026 Abroad Marketplace · Flask + SQLite classroom project</p>
+        </footer>
+    </main>
+
+    {% with flashes = get_flashed_messages(with_categories=true) %}
+        {% if flashes %}
+        <div class="notification-stack" aria-live="polite">
+            {% for category, message in flashes %}
+            <div class="notification {{ category }}" role="status" style="display:block">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

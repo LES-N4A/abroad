@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty %}
+{% block title %}Staff management{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow gold"><i class="fas fa-users-gear"></i> Administrator</span>
+        <h1>Staff management</h1>
+        <p>Grant or revoke staff (verifier) access. Staff can verify and reject receipts but cannot approve accounts, verify trips, or manage orders.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.admin_dashboard') }}"><i class="fas fa-house"></i> Dashboard</a>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="main-content">
+        <section class="panel">
+            <div class="panel-head">
+                <div><h2><i class="fas fa-users"></i> Accounts</h2><p>Select an account to grant or revoke staff access.</p></div>
+            </div>
+            {% if users %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead><tr><th>Account</th><th>Role</th><th>City</th><th>Status</th><th>Staff</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td><strong>{{ user.name }}</strong><br><span class="small muted">{{ user.email }}</span></td>
+                            <td>{{ user.role|title }}</td>
+                            <td>{{ user.city or '—' }}</td>
+                            <td>
+                                {% if user.status == 'active' %}
+                                <span class="badge badge-success">Active</span>
+                                {% elif user.status == 'pending' %}
+                                <span class="badge badge-warning">Pending</span>
+                                {% else %}
+                                <span class="badge badge-danger">{{ user.status|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_staff %}
+                                <span class="badge badge-success"><i class="fas fa-check-double"></i> Staff</span>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_staff %}
+                                <form method="post" action="{{ url_for('main.admin_staff_toggle', user_id=user.id) }}" class="inline-form">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button class="btn btn-danger btn-small" type="submit" onclick="return confirm('Remove staff access from {{ user.name }}?')"><i class="fas fa-person-ban"></i> Remove</button>
+                                </form>
+                                {% else %}
+                                <form method="post" action="{{ url_for('main.admin_staff_toggle', user_id=user.id) }}" class="inline-form">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button class="btn btn-success btn-small" type="submit" onclick="return confirm('Grant staff access to {{ user.name }}? They will be able to verify receipts.')"><i class="fas fa-check-double"></i> Grant</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            {{ empty('fa-users', 'No accounts', 'No non-admin accounts found.') }}
+            {% endif %}
+        </section>
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <div class="section-header" style="margin-bottom:12px"><h2>Admin tools</h2></div>
+            <div class="quick-actions">
+                <a class="btn btn-outline" href="{{ url_for('main.admin_accounts') }}"><i class="fas fa-users"></i> All accounts</a>
+                <a class="btn btn-outline" href="{{ url_for('main.admin_receipts') }}"><i class="fas fa-receipt"></i> Verify receipts</a>
+                <a class="btn btn-outline" href="{{ url_for('main.admin_trips') }}"><i class="fas fa-plane-departure"></i> Trips</a>
+                <a class="btn btn-outline" href="{{ url_for('main.admin_orders') }}"><i class="fas fa-bag-shopping"></i> Orders</a>
+                <a class="btn btn-outline" href="{{ url_for('main.admin_staff') }}"><i class="fas fa-users-gear"></i> Staff</a>
+            </div>
+        </section>
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">Staff privileges</h2>
+            <p class="small muted">Staff can access the verification dashboard and verify/reject purchase receipts. They cannot approve accounts, verify trips, manage orders, or access other admin pages.</p>
+        </section>
+    </aside>
+</div>
+{% endblock %}

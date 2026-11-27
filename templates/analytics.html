@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty %}
+{% block title %}Analytics{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-chart-line"></i> Analytics</span>
+        <h1>Store performance</h1>
+        <p>Computed live from orders and wallet transactions in SQLite.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.orders') }}"><i class="fas fa-box"></i> Orders</a>
+        <a class="btn btn-primary" href="{{ url_for('main.products_page') }}"><i class="fas fa-shirt"></i> Products</a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon revenue"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="stat-content"><h3>{{ stats.revenue|money }}</h3><p>Lifetime revenue</p></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orders"><i class="fas fa-shopping-bag"></i></div>
+        <div class="stat-content"><h3>{{ stats.orders }}</h3><p>Orders</p></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon products"><i class="fas fa-shirt"></i></div>
+        <div class="stat-content"><h3>{{ stats.products }}</h3><p>Products</p></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon rating"><i class="fas fa-star"></i></div>
+        <div class="stat-content"><h3>{{ '%.1f'|format(stats.rating or 0) }}</h3><p>Rating · {{ stats.reviews }} reviews</p></div>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div>
+        <section class="panel" style="margin-bottom:20px">
+            <div class="panel-head">
+                <div><h2><i class="fas fa-chart-column"></i> Revenue this week</h2><p>Wallet sales credited per day.</p></div>
+                <span class="badge badge-verified">Last 7 days</span>
+            </div>
+            {% set peak = chart|map(attribute='value')|max %}
+            {% set weekly_total = chart|sum(attribute='value') %}
+            <div class="chart-bars">
+                {% for point in chart %}
+                <div class="chart-bar-wrap">
+                    <div class="chart-value">{{ point.value|money if point.value else '' }}</div>
+                    <div class="chart-bar {% if peak > 0 and point.value == peak %}peak{% endif %}" style="height: {{ point.height }}%"></div>
+                    <div class="chart-label">{{ point.label }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="small muted" style="margin-top:10px">Total this week: <strong>{{ weekly_total|money }}</strong></p>
+        </section>
+
+        <section class="panel">
+            <div class="panel-head"><div><h2><i class="fas fa-ranking-star"></i> Top products</h2><p>By revenue.</p></div></div>
+            {% if top_products %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead><tr><th>Product</th><th>Units sold</th><th style="text-align:right">Revenue</th></tr></thead>
+                    <tbody>
+                        {% for item in top_products %}
+                        <tr><td><strong>{{ item.name }}</strong></td><td>{{ item.qty }}</td><td style="text-align:right">{{ item.revenue|money }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            {{ empty('fa-chart-simple', 'No sales yet', 'Analytics populate as soon as orders are delivered.') }}
+            {% endif %}
+        </section>
+    </div>
+
+    <aside class="sidebar">
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:10px">Order pipeline</h2>
+            <div class="info-list">
+                {% for key, label in [('new', 'New'), ('processing', 'Processing'), ('shipped', 'Shipped'), ('delivered', 'Delivered')] %}
+                <div class="info-row"><span>{{ label }}</span><strong>{{ status_counts.get(key, 0) }}</strong></div>
+                {% endfor %}
+            </div>
+            <a class="btn btn-outline" href="{{ url_for('main.orders') }}" style="width:100%;margin-top:12px"><i class="fas fa-arrow-right"></i> Manage orders</a>
+        </section>
+        <section class="sidebar-box">
+            <h2 style="font-size:16px;margin-bottom:8px">Inventory health</h2>
+            <div class="info-list">
+                <div class="info-row"><span>Active products</span><strong>{{ stats.products }}</strong></div>
+                <div class="info-row"><span>Low stock (≤ 5)</span><strong style="color:{{ 'var(--warning)' if stats.low_stock else 'var(--success)' }}">{{ stats.low_stock }}</strong></div>
+                <div class="info-row"><span>Available balance</span><strong>{{ stats.balance|money }}</strong></div>
+            </div>
+            <a class="btn btn-outline" href="{{ url_for('main.products_page', view='inventory') }}" style="width:100%;margin-top:12px"><i class="fas fa-boxes"></i> Restock products</a>
+        </section>
+    </aside>
+</div>
+{% endblock %}

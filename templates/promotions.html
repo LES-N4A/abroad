@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, empty, product_image %}
+{% block title %}Promotions{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <span class="eyebrow"><i class="fas fa-bullhorn"></i> Marketing</span>
+        <h1>Promotions</h1>
+        <p>Featured products appear first in the shop for every buyer.</p>
+    </div>
+    <div class="page-head-actions">
+        <a class="btn btn-outline" href="{{ url_for('main.products_page') }}"><i class="fas fa-shirt"></i> Products</a>
+        <a class="btn btn-primary" href="{{ url_for('main.analytics') }}"><i class="fas fa-chart-line"></i> Analytics</a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon products"><i class="fas fa-bolt"></i></div>
+        <div class="stat-content"><h3>{{ products|selectattr('featured')|list|length }}</h3><p>Featured products</p></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orders"><i class="fas fa-shirt"></i></div>
+        <div class="stat-content"><h3>{{ products|length }}</h3><p>Total products</p></div>
+    </div>
+</div>
+
+{% if products %}
+<div class="products-grid" style="grid-template-columns:repeat(auto-fill,minmax(235px,1fr))">
+    {% for product in products %}
+    <article class="product-card">
+        <div class="product-image-container">
+            {% if product.featured %}<span class="product-badge"><i class="fas fa-bolt"></i> Featured</span>{% endif %}
+            {{ product_image(product, 'product-image') }}
+        </div>
+        <div class="product-details">
+            <div class="product-meta-row"><span>{{ product.category }}</span><span class="stock-tag stock-in">{{ product.stock }} left</span></div>
+            <div class="product-title">{{ product.name }}</div>
+            <div class="product-price" style="margin-top:4px">{{ product.price|money }}</div>
+            <div class="product-stats"><span>{{ 'Promoted' if product.featured else 'Standard listing' }}</span><span>{{ product.weight_kg }} kg</span></div>
+        </div>
+        <div class="product-actions">
+            <form method="post" action="{{ url_for('main.promotion_toggle', product_id=product.id) }}" style="flex:1">
+                {{ csrf_field() }}
+                <button class="btn {{ 'btn-ghost' if product.featured else 'btn-primary' }} btn-small" type="submit" style="width:100%">
+                    <i class="fas fa-bolt"></i> {{ 'Remove from featured' if product.featured else 'Feature product' }}
+                </button>
+            </form>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+{{ empty('fa-bullhorn', 'No products to promote', 'Add a product first, then feature it here.') }}
+{% endif %}
+{% endblock %}

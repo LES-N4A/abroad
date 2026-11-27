@@ -1,0 +1,42 @@
+{% macro csrf_field() -%}
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{%- endmacro %}
+
+{% macro status(value) -%}
+<span class="order-status status-{{ value|replace('_', '-') }}">{{ value|replace('_', ' ')|title }}</span>
+{%- endmacro %}
+
+{% macro cart_status(cart) -%}
+{% if cart.cancelled_at %}
+<span class="order-status status-cancelled">Cancelled{% if cart.refunded_at %} · Refunded{% endif %}</span>
+{% else %}
+{{ status(cart.status) }}
+{% endif %}
+{%- endmacro %}
+
+{% macro empty(icon, title, text) -%}
+<div class="empty-state">
+    <i class="fas {{ icon }}"></i>
+    <h3>{{ title }}</h3>
+    <p>{{ text }}</p>
+</div>
+{%- endmacro %}
+
+{% macro avatar(name, extra='') -%}
+<span class="user-avatar {{ extra }}">{{ name|initials }}</span>
+{%- endmacro %}
+
+{% macro product_image(product, cls='order-img') -%}
+<img src="{{ product.image_url or 'https://placehold.co/600x400/eef3fb/1e3a8a?text=Product' }}"
+     alt="{{ product.name }}" class="{{ cls }}" loading="lazy">
+{%- endmacro %}
+
+{% macro stat(icon, value, label, tone='orders') -%}
+<div class="stat-card">
+    <div class="stat-icon {{ tone }}"><i class="fas {{ icon }}"></i></div>
+    <div class="stat-content">
+        <h3>{{ value }}</h3>
+        <p>{{ label }}</p>
+    </div>
+</div>
+{%- endmacro %}
