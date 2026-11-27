@@ -12,3 +12,7 @@ abroad-release.tar.gz
 logs/
 instance/*.log
 pytest-of-*
+
+# Android build output and the local signing key
+*.apk
+android/abroad-release.jks

@@ -32,6 +32,10 @@ The first start creates `instance/abroad.sqlite` and seeds the five core account
 
 To reset the database, stop the server, delete `instance/abroad.sqlite`, and start it again. The database and uploads are ignored by Git.
 
+## Phone app
+
+`abroad-mobile-1.0.0.apk` in the project root is the Android client: a small native app that opens the running site full-screen, with the Abroad logo as its icon. The Flask server keeps running on the computer; on first launch the app asks for the public tunnel link and remembers it. Copy the APK to the phone and open it, allowing installs from that source. The sources are in `android/`, and `android/README.md` explains how to rebuild it.
+
 ## Running the production entrypoint
 
 `app_production.py` is the production factory: it reads its settings from `.env`, refuses to boot without `SECRET_KEY`, and serves the same app with production security settings and structured logging.
@@ -48,6 +52,7 @@ start-production.cmd
 - Health: <http://127.0.0.1:5001/health>
 
 The optional SendGrid, Stripe and Twilio integrations stay disabled (`ENABLE_EMAIL_NOTIFICATIONS=0`, etc.); no provider credentials are required to boot locally. Redis and Celery checks are gated behind `ENABLE_REDIS=0`, so `/health/ready` works without either service.
+
 
 ## Demo accounts
 
